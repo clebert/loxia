@@ -23,7 +23,7 @@ export interface SendingSenderState {
 
 export interface FailureSenderState {
   readonly status: 'failure';
-  readonly reason: string;
+  readonly reason: Error;
 
   readonly send: <TValue>(
     signal: Promise<TValue>,
@@ -48,7 +48,7 @@ export function createSenderHook(hooks: SenderHooks): () => SenderState {
     hooks.useEffect(() => () => void (mountedRef.current = false), []);
 
     const [sending, setSending] = hooks.useState(false);
-    const [reason, setReason] = hooks.useState<string | undefined>(undefined);
+    const [reason, setReason] = hooks.useState<Error | undefined>(undefined);
 
     const send = hooks.useCallback<IdleSenderState['send']>(
       (signal, effect) => {
@@ -79,12 +79,12 @@ export function createSenderHook(hooks: SenderHooks): () => SenderState {
 
             setSending(false);
 
-            if (isErrorLike(error) && error.message) {
-              setReason(error.message);
-            } else if (typeof error === 'string' && error) {
+            if (error instanceof Error) {
               setReason(error);
+            } else if (typeof error === 'string') {
+              setReason(new Error(error));
             } else {
-              setReason('Unknown error.');
+              setReason(new Error());
             }
           });
       },
@@ -101,14 +101,4 @@ export function createSenderHook(hooks: SenderHooks): () => SenderState {
       [sending, reason]
     );
   };
-}
-
-function isErrorLike(error: unknown): error is {readonly message: string} {
-  if (typeof error !== 'object' || !error) {
-    return false;
-  }
-
-  const {message} = error as {message: unknown};
-
-  return typeof message === 'string' && Boolean(message);
 }

@@ -21,19 +21,13 @@ const sendingState = {status: 'sending'};
 
 const unknownFailureState = {
   status: 'failure',
-  reason: 'Unknown error.',
+  reason: new Error(),
   send: expect.any(Function),
 };
 
-const error1FailureState = {
+const oopsFailureState = {
   status: 'failure',
-  reason: 'error1',
-  send: expect.any(Function),
-};
-
-const error2FailureState = {
-  status: 'failure',
-  reason: 'error2',
+  reason: new Error('oops'),
   send: expect.any(Function),
 };
 
@@ -64,23 +58,29 @@ describe('useSender()', () => {
     expect(await sender.result.getNextAsync()).toEqual(sendingState);
     expect(await sender.result.getNextAsync()).toEqual(unknownFailureState);
 
-    sender.result.getCurrent().send!(Promise.reject(new Error()));
+    sender.result.getCurrent().send!(Promise.reject(new Error('oops')));
 
     expect(sender.result.getCurrent()).toEqual(unknownFailureState);
+    expect(await sender.result.getNextAsync()).toEqual(sendingState);
+    expect(await sender.result.getNextAsync()).toEqual(oopsFailureState);
+
+    sender.result.getCurrent().send!(Promise.reject(new Error()));
+
+    expect(sender.result.getCurrent()).toEqual(oopsFailureState);
     expect(await sender.result.getNextAsync()).toEqual(sendingState);
     expect(await sender.result.getNextAsync()).toEqual(unknownFailureState);
 
-    sender.result.getCurrent().send!(Promise.reject(new Error('error1')));
+    sender.result.getCurrent().send!(Promise.reject('oops'));
 
     expect(sender.result.getCurrent()).toEqual(unknownFailureState);
     expect(await sender.result.getNextAsync()).toEqual(sendingState);
-    expect(await sender.result.getNextAsync()).toEqual(error1FailureState);
+    expect(await sender.result.getNextAsync()).toEqual(oopsFailureState);
 
-    sender.result.getCurrent().send!(Promise.reject('error2'));
+    sender.result.getCurrent().send!(Promise.reject(''));
 
-    expect(sender.result.getCurrent()).toEqual(error1FailureState);
+    expect(sender.result.getCurrent()).toEqual(oopsFailureState);
     expect(await sender.result.getNextAsync()).toEqual(sendingState);
-    expect(await sender.result.getNextAsync()).toEqual(error2FailureState);
+    expect(await sender.result.getNextAsync()).toEqual(unknownFailureState);
   });
 
   test('failure recovery', async () => {

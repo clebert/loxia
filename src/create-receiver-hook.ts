@@ -2,25 +2,25 @@ import type {useEffect, useMemo, useRef, useState} from 'batis';
 
 export type ReceiverState<TValue> =
   | ReceivingReceiverState
-  | ReceivedReceiverState<TValue>
-  | FailedReceiverState;
+  | SuccessReceiverState<TValue>
+  | FailureReceiverState;
 
 export interface ReceivingReceiverState {
   readonly status: 'receiving';
   readonly value?: undefined;
-  readonly error?: undefined;
+  readonly reason?: undefined;
 }
 
-export interface ReceivedReceiverState<TValue> {
-  readonly status: 'received';
+export interface SuccessReceiverState<TValue> {
+  readonly status: 'success';
   readonly value: TValue;
-  readonly error?: undefined;
+  readonly reason?: undefined;
 }
 
-export interface FailedReceiverState {
-  readonly status: 'failed';
+export interface FailureReceiverState {
+  readonly status: 'failure';
   readonly value?: undefined;
-  readonly error: Error;
+  readonly reason: Error;
 }
 
 export interface ReceiverHooks {
@@ -40,20 +40,32 @@ export function createReceiverHook(
 
     const [result, setResult] = hooks.useState<
       | {ok: true; value: TValue; signal: Promise<TValue>}
-      | {ok: false; error: Error; signal: Promise<TValue>}
+      | {ok: false; reason: Error; signal: Promise<TValue>}
       | undefined
     >(undefined);
 
     hooks.useEffect(() => {
       signal
         ?.then((value) => {
-          if (mountedRef.current) {
-            setResult({ok: true, value, signal});
+          /* istanbul ignore next */
+          if (!mountedRef.current) {
+            return;
           }
+
+          setResult({ok: true, value, signal});
         })
-        .catch((error) => {
-          if (mountedRef.current) {
-            setResult({ok: false, error, signal});
+        .catch((error: unknown) => {
+          /* istanbul ignore next */
+          if (!mountedRef.current) {
+            return;
+          }
+
+          if (error instanceof Error) {
+            setResult({ok: false, reason: error, signal});
+          } else if (typeof error === 'string') {
+            setResult({ok: false, reason: new Error(error), signal});
+          } else {
+            setResult({ok: false, reason: new Error(), signal});
           }
         });
     }, [signal]);
@@ -61,8 +73,8 @@ export function createReceiverHook(
     return hooks.useMemo(() => {
       if (signal === result?.signal) {
         return result.ok
-          ? {status: 'received', value: result.value}
-          : {status: 'failed', error: result.error};
+          ? {status: 'success', value: result.value}
+          : {status: 'failure', reason: result.reason};
       }
 
       return {status: 'receiving'};
