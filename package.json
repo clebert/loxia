@@ -1,0 +1,56 @@
+{
+  "name": "loxia",
+  "version": "0.0.0",
+  "description": "TODO.",
+  "bugs": {
+    "url": "https://github.com/clebert/loxia/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/clebert/loxia.git"
+  },
+  "license": "MIT",
+  "author": "Clemens Akens <clebert@me.com>",
+  "sideEffects": false,
+  "main": "lib/cjs/index.js",
+  "module": "lib/esm/index.js",
+  "types": "lib/esm/index.d.ts",
+  "files": [
+    "lib"
+  ],
+  "scripts": {
+    "build": "run-p build:*",
+    "build:cjs": "tsc --project tsconfig.cjs.json --incremental --pretty",
+    "build:esm": "tsc --project tsconfig.esm.json --incremental --pretty",
+    "ci": "run-p format:test lint test build",
+    "postci": "size-limit",
+    "format": "prettier --write '**/*.{html,js,json,md,ts,tsx,yml}'",
+    "format:test": "prettier --list-different '**/*.{html,js,json,md,ts,tsx,yml}'",
+    "lint": "tslint --config tslint.json --project tsconfig.json --format verbose",
+    "release": "npm version",
+    "postrelease": "git push --follow-tags",
+    "test": "jest"
+  },
+  "dependencies": {
+    "batis": "^0.1.2"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.12.9",
+    "@babel/preset-env": "^7.12.7",
+    "@babel/preset-typescript": "^7.12.7",
+    "@size-limit/preset-small-lib": "^4.9.0",
+    "@types/jest": "^26.0.16",
+    "jest": "^26.6.3",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^2.2.1",
+    "size-limit": "^4.9.0",
+    "tslint": "^6.1.3",
+    "typescript": "^4.1.2"
+  },
+  "size-limit": [
+    {
+      "path": "lib/esm/index.js",
+      "limit": "500 B"
+    }
+  ]
+}
