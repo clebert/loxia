@@ -3,7 +3,7 @@
     "declaration": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "lib": ["ESNext"],
+    "lib": ["ES2019"],
     "module": "ESNext",
     "moduleResolution": "Node",
     "noUncheckedIndexedAccess": true,
