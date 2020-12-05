@@ -32,6 +32,10 @@ import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 ```
 
 ```js
+import {useCallback, useEffect, useMemo, useRef, useState} from 'preact/hooks';
+```
+
+```js
 import {useCallback, useEffect, useMemo, useRef, useState} from 'batis';
 ```
 
