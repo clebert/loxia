@@ -38,72 +38,72 @@ describe('useSender()', () => {
   afterEach(() => sender.stop());
 
   test('successful sending', async () => {
-    sender.result.getCurrent().send!(Promise.resolve());
+    sender.result.value.send!(Promise.resolve());
 
-    expect(sender.result.getCurrent()).toEqual(idleState);
-    expect(await sender.result.getNextAsync()).toEqual(sendingState);
-    expect(await sender.result.getNextAsync()).toEqual(idleState);
+    expect(sender.result.value).toEqual(idleState);
+    expect((await sender.result.next).value).toEqual(sendingState);
+    expect((await sender.result.next).value).toEqual(idleState);
 
-    sender.result.getCurrent().send!(Promise.resolve());
+    sender.result.value.send!(Promise.resolve());
 
-    expect(sender.result.getCurrent()).toEqual(idleState);
-    expect(await sender.result.getNextAsync()).toEqual(sendingState);
-    expect(await sender.result.getNextAsync()).toEqual(idleState);
+    expect(sender.result.value).toEqual(idleState);
+    expect((await sender.result.next).value).toEqual(sendingState);
+    expect((await sender.result.next).value).toEqual(idleState);
   });
 
   test('unsuccessful sending', async () => {
-    sender.result.getCurrent().send!(Promise.reject());
+    sender.result.value.send!(Promise.reject());
 
-    expect(sender.result.getCurrent()).toEqual(idleState);
-    expect(await sender.result.getNextAsync()).toEqual(sendingState);
-    expect(await sender.result.getNextAsync()).toEqual(unknownFailureState);
+    expect(sender.result.value).toEqual(idleState);
+    expect((await sender.result.next).value).toEqual(sendingState);
+    expect((await sender.result.next).value).toEqual(unknownFailureState);
 
-    sender.result.getCurrent().send!(Promise.reject(new Error('oops')));
+    sender.result.value.send!(Promise.reject(new Error('oops')));
 
-    expect(sender.result.getCurrent()).toEqual(unknownFailureState);
-    expect(await sender.result.getNextAsync()).toEqual(sendingState);
-    expect(await sender.result.getNextAsync()).toEqual(oopsFailureState);
+    expect(sender.result.value).toEqual(unknownFailureState);
+    expect((await sender.result.next).value).toEqual(sendingState);
+    expect((await sender.result.next).value).toEqual(oopsFailureState);
 
-    sender.result.getCurrent().send!(Promise.reject(new Error()));
+    sender.result.value.send!(Promise.reject(new Error()));
 
-    expect(sender.result.getCurrent()).toEqual(oopsFailureState);
-    expect(await sender.result.getNextAsync()).toEqual(sendingState);
-    expect(await sender.result.getNextAsync()).toEqual(unknownFailureState);
+    expect(sender.result.value).toEqual(oopsFailureState);
+    expect((await sender.result.next).value).toEqual(sendingState);
+    expect((await sender.result.next).value).toEqual(unknownFailureState);
 
-    sender.result.getCurrent().send!(Promise.reject('oops'));
+    sender.result.value.send!(Promise.reject('oops'));
 
-    expect(sender.result.getCurrent()).toEqual(unknownFailureState);
-    expect(await sender.result.getNextAsync()).toEqual(sendingState);
-    expect(await sender.result.getNextAsync()).toEqual(oopsFailureState);
+    expect(sender.result.value).toEqual(unknownFailureState);
+    expect((await sender.result.next).value).toEqual(sendingState);
+    expect((await sender.result.next).value).toEqual(oopsFailureState);
 
-    sender.result.getCurrent().send!(Promise.reject(''));
+    sender.result.value.send!(Promise.reject(''));
 
-    expect(sender.result.getCurrent()).toEqual(oopsFailureState);
-    expect(await sender.result.getNextAsync()).toEqual(sendingState);
-    expect(await sender.result.getNextAsync()).toEqual(unknownFailureState);
+    expect(sender.result.value).toEqual(oopsFailureState);
+    expect((await sender.result.next).value).toEqual(sendingState);
+    expect((await sender.result.next).value).toEqual(unknownFailureState);
   });
 
   test('failure recovery', async () => {
-    sender.result.getCurrent().send!(Promise.reject());
+    sender.result.value.send!(Promise.reject());
 
-    expect(sender.result.getCurrent()).toEqual(idleState);
-    expect(await sender.result.getNextAsync()).toEqual(sendingState);
-    expect(await sender.result.getNextAsync()).toEqual(unknownFailureState);
+    expect(sender.result.value).toEqual(idleState);
+    expect((await sender.result.next).value).toEqual(sendingState);
+    expect((await sender.result.next).value).toEqual(unknownFailureState);
 
-    sender.result.getCurrent().send!(Promise.resolve());
+    sender.result.value.send!(Promise.resolve());
 
-    expect(sender.result.getCurrent()).toEqual(unknownFailureState);
-    expect(await sender.result.getNextAsync()).toEqual(sendingState);
-    expect(await sender.result.getNextAsync()).toEqual(idleState);
+    expect(sender.result.value).toEqual(unknownFailureState);
+    expect((await sender.result.next).value).toEqual(sendingState);
+    expect((await sender.result.next).value).toEqual(idleState);
   });
 
   test('multiple sending', async () => {
-    const {send} = sender.result.getCurrent();
+    const {send} = sender.result.value;
 
     send!(Promise.resolve());
     send!(Promise.resolve());
 
-    await expect(sender.result.getNextAsync()).rejects.toThrow(
+    await expect(sender.result.next).rejects.toThrow(
       new Error('A signal is already being sent.')
     );
   });
@@ -111,20 +111,20 @@ describe('useSender()', () => {
   test('effect triggering', async () => {
     const effect1 = jest.fn();
 
-    sender.result.getCurrent().send!(Promise.resolve('a'), effect1);
+    sender.result.value.send!(Promise.resolve('a'), effect1);
 
-    expect(sender.result.getCurrent()).toEqual(idleState);
-    expect(await sender.result.getNextAsync()).toEqual(sendingState);
-    expect(await sender.result.getNextAsync()).toEqual(idleState);
+    expect(sender.result.value).toEqual(idleState);
+    expect((await sender.result.next).value).toEqual(sendingState);
+    expect((await sender.result.next).value).toEqual(idleState);
     expect(effect1).toHaveBeenCalledWith('a');
 
     const effect2 = jest.fn();
 
-    sender.result.getCurrent().send!(Promise.reject(), effect2);
+    sender.result.value.send!(Promise.reject(), effect2);
 
-    expect(sender.result.getCurrent()).toEqual(idleState);
-    expect(await sender.result.getNextAsync()).toEqual(sendingState);
-    expect(await sender.result.getNextAsync()).toEqual(unknownFailureState);
+    expect(sender.result.value).toEqual(idleState);
+    expect((await sender.result.next).value).toEqual(sendingState);
+    expect((await sender.result.next).value).toEqual(unknownFailureState);
     expect(effect2).not.toHaveBeenCalled();
   });
 });
