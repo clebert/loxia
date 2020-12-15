@@ -32,6 +32,7 @@ export interface FailedSenderState {
 }
 
 export type Effect<TValue> = (value: TValue) => void;
+export type SenderHook = () => SenderState;
 
 export interface SenderInit {
   readonly useCallback: typeof Batis.useCallback;
@@ -41,7 +42,7 @@ export interface SenderInit {
   readonly useState: typeof Batis.useState;
 }
 
-export function createSenderHook(init: SenderInit): () => SenderState {
+export function createSenderHook(init: SenderInit): SenderHook {
   const {useCallback, useEffect, useMemo, useRef, useState} = init;
 
   return () => {

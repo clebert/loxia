@@ -23,6 +23,10 @@ export interface FailedReceiverState {
   readonly error: Error;
 }
 
+export type ReceiverHook = <TValue>(
+  signal: Promise<TValue>
+) => ReceiverState<TValue>;
+
 export interface ReceiverInit {
   readonly useEffect: typeof Batis.useEffect;
   readonly useMemo: typeof Batis.useMemo;
@@ -30,9 +34,7 @@ export interface ReceiverInit {
   readonly useState: typeof Batis.useState;
 }
 
-export function createReceiverHook(
-  init: ReceiverInit
-): <TValue>(signal: Promise<TValue>) => ReceiverState<TValue> {
+export function createReceiverHook(init: ReceiverInit): ReceiverHook {
   const {useEffect, useMemo, useRef, useState} = init;
 
   return <TValue>(signal: Promise<TValue>) => {
