@@ -1,11 +1,4 @@
-import {
-  HookProcess,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'batis';
+import * as Batis from 'batis';
 import {
   FailedSenderState,
   IdleSenderState,
@@ -13,14 +6,7 @@ import {
   createSenderHook,
 } from './create-sender-hook';
 
-const useSender = createSenderHook({
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-});
-
+const useSender = createSenderHook(Batis);
 const idleState: IdleSenderState = {status: 'idle', send: expect.any(Function)};
 const sendingState: SendingSenderState = {status: 'sending'};
 
@@ -37,9 +23,9 @@ const failedStateOops: FailedSenderState = {
 };
 
 describe('useSender()', () => {
-  let sender: HookProcess<typeof useSender>;
+  let sender: Batis.HookProcess<typeof useSender>;
 
-  beforeEach(() => (sender = HookProcess.start(useSender, [])));
+  beforeEach(() => (sender = Batis.HookProcess.start(useSender, [])));
   afterEach(() => sender.stop());
 
   test('successful sending', async () => {

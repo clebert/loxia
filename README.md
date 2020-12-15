@@ -28,38 +28,28 @@ npm i loxia --save
 ## Usage
 
 ```js
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {createReceiverHook, createSenderHook} from 'loxia';
 ```
 
 ```js
-import {useCallback, useEffect, useMemo, useRef, useState} from 'preact/hooks';
+import * as React from 'react';
+
+export const useReceiver = createReceiverHook(React);
+export const useSender = createSenderHook(React);
 ```
 
 ```js
-import {useCallback, useEffect, useMemo, useRef, useState} from 'batis';
+import * as PreactHooks from 'preact/hooks';
+
+export const useReceiver = createReceiverHook(PreactHooks);
+export const useSender = createSenderHook(PreactHooks);
 ```
 
 ```js
-import {createSenderHook} from 'loxia';
+import * as Batis from 'batis';
 
-export const useSender = createSenderHook({
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-});
-```
-
-```js
-import {createReceiverHook} from 'loxia';
-
-export const useReceiver = createReceiverHook({
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-});
+export const useReceiver = createReceiverHook(Batis);
+export const useSender = createSenderHook(Batis);
 ```
 
 ## Development

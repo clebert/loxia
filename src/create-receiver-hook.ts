@@ -1,4 +1,4 @@
-import type {useEffect, useMemo, useRef, useState} from 'batis';
+import type Batis from 'batis';
 
 export type ReceiverState<TValue> =
   | ReceivingReceiverState
@@ -23,28 +23,30 @@ export interface FailedReceiverState {
   readonly error: Error;
 }
 
-export interface ReceiverHooks {
-  readonly useEffect: typeof useEffect;
-  readonly useMemo: typeof useMemo;
-  readonly useRef: typeof useRef;
-  readonly useState: typeof useState;
+export interface ReceiverInit {
+  readonly useEffect: typeof Batis.useEffect;
+  readonly useMemo: typeof Batis.useMemo;
+  readonly useRef: typeof Batis.useRef;
+  readonly useState: typeof Batis.useState;
 }
 
 export function createReceiverHook(
-  hooks: ReceiverHooks
+  init: ReceiverInit
 ): <TValue>(signal: Promise<TValue>) => ReceiverState<TValue> {
+  const {useEffect, useMemo, useRef, useState} = init;
+
   return <TValue>(signal: Promise<TValue>) => {
-    const mountedRef = hooks.useRef(true);
+    const mountedRef = useRef(true);
 
-    hooks.useEffect(() => () => void (mountedRef.current = false), []);
+    useEffect(() => () => void (mountedRef.current = false), []);
 
-    const [result, setResult] = hooks.useState<
+    const [result, setResult] = useState<
       | {ok: true; value: TValue; signal: Promise<TValue>}
       | {ok: false; error: Error; signal: Promise<TValue>}
       | undefined
     >(undefined);
 
-    hooks.useEffect(() => {
+    useEffect(() => {
       signal
         ?.then((value) => {
           /* istanbul ignore next */
@@ -70,7 +72,7 @@ export function createReceiverHook(
         });
     }, [signal]);
 
-    return hooks.useMemo(() => {
+    return useMemo(() => {
       if (signal === result?.signal) {
         return result.ok
           ? {status: 'successful', value: result.value}

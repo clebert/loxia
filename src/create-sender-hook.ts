@@ -1,4 +1,4 @@
-import type {useCallback, useEffect, useMemo, useRef, useState} from 'batis';
+import type Batis from 'batis';
 
 export type SenderState =
   | IdleSenderState
@@ -33,65 +33,64 @@ export interface FailedSenderState {
 
 export type Effect<TValue> = (value: TValue) => void;
 
-export interface SenderHooks {
-  readonly useCallback: typeof useCallback;
-  readonly useEffect: typeof useEffect;
-  readonly useMemo: typeof useMemo;
-  readonly useRef: typeof useRef;
-  readonly useState: typeof useState;
+export interface SenderInit {
+  readonly useCallback: typeof Batis.useCallback;
+  readonly useEffect: typeof Batis.useEffect;
+  readonly useMemo: typeof Batis.useMemo;
+  readonly useRef: typeof Batis.useRef;
+  readonly useState: typeof Batis.useState;
 }
 
-export function createSenderHook(hooks: SenderHooks): () => SenderState {
+export function createSenderHook(init: SenderInit): () => SenderState {
+  const {useCallback, useEffect, useMemo, useRef, useState} = init;
+
   return () => {
-    const mountedRef = hooks.useRef(true);
+    const mountedRef = useRef(true);
 
-    hooks.useEffect(() => () => void (mountedRef.current = false), []);
+    useEffect(() => () => void (mountedRef.current = false), []);
 
-    const [sending, setSending] = hooks.useState(false);
-    const [error, setError] = hooks.useState<Error | undefined>(undefined);
+    const [sending, setSending] = useState(false);
+    const [error, setError] = useState<Error | undefined>(undefined);
 
-    const send = hooks.useCallback<IdleSenderState['send']>(
-      (signal, effect) => {
-        setSending((prevSending) => {
-          if (prevSending) {
-            throw new Error('A signal is already being sent.');
+    const send = useCallback<IdleSenderState['send']>((signal, effect) => {
+      setSending((prevSending) => {
+        if (prevSending) {
+          throw new Error('A signal is already being sent.');
+        }
+
+        return true;
+      });
+
+      signal
+        .then((value) => {
+          /* istanbul ignore next */
+          if (!mountedRef.current) {
+            return;
           }
 
-          return true;
+          setSending(false);
+          setError(undefined);
+          effect?.(value);
+        })
+        .catch((maybeError: unknown) => {
+          /* istanbul ignore next */
+          if (!mountedRef.current) {
+            return;
+          }
+
+          setSending(false);
+
+          if (maybeError instanceof Error) {
+            setError(maybeError);
+          } else if (typeof maybeError === 'string') {
+            setError(new Error(maybeError));
+          } else {
+            setError(new Error());
+          }
         });
+    }, []);
 
-        signal
-          .then((value) => {
-            /* istanbul ignore next */
-            if (!mountedRef.current) {
-              return;
-            }
-
-            setSending(false);
-            setError(undefined);
-            effect?.(value);
-          })
-          .catch((maybeError: unknown) => {
-            /* istanbul ignore next */
-            if (!mountedRef.current) {
-              return;
-            }
-
-            setSending(false);
-
-            if (maybeError instanceof Error) {
-              setError(maybeError);
-            } else if (typeof maybeError === 'string') {
-              setError(new Error(maybeError));
-            } else {
-              setError(new Error());
-            }
-          });
-      },
-      []
-    );
-
-    return hooks.useMemo(
+    return useMemo(
       () =>
         sending
           ? {status: 'sending'}
