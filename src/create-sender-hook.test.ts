@@ -6,7 +6,12 @@ import {
   useRef,
   useState,
 } from 'batis';
-import {createSenderHook} from './create-sender-hook';
+import {
+  FailedSenderState,
+  IdleSenderState,
+  SendingSenderState,
+  createSenderHook,
+} from './create-sender-hook';
 
 const useSender = createSenderHook({
   useCallback,
@@ -16,18 +21,18 @@ const useSender = createSenderHook({
   useState,
 });
 
-const idleState = {status: 'idle', send: expect.any(Function)};
-const sendingState = {status: 'sending'};
+const idleState: IdleSenderState = {status: 'idle', send: expect.any(Function)};
+const sendingState: SendingSenderState = {status: 'sending'};
 
-const unknownFailureState = {
-  status: 'failure',
-  reason: new Error(),
+const failedStateUnknown: FailedSenderState = {
+  status: 'failed',
+  error: new Error(),
   send: expect.any(Function),
 };
 
-const oopsFailureState = {
-  status: 'failure',
-  reason: new Error('oops'),
+const failedStateOops: FailedSenderState = {
+  status: 'failed',
+  error: new Error('oops'),
   send: expect.any(Function),
 };
 
@@ -56,43 +61,43 @@ describe('useSender()', () => {
 
     expect(sender.result.value).toEqual(idleState);
     expect((await sender.result.next).value).toEqual(sendingState);
-    expect((await sender.result.next).value).toEqual(unknownFailureState);
+    expect((await sender.result.next).value).toEqual(failedStateUnknown);
 
     sender.result.value.send!(Promise.reject(new Error('oops')));
 
-    expect(sender.result.value).toEqual(unknownFailureState);
+    expect(sender.result.value).toEqual(failedStateUnknown);
     expect((await sender.result.next).value).toEqual(sendingState);
-    expect((await sender.result.next).value).toEqual(oopsFailureState);
+    expect((await sender.result.next).value).toEqual(failedStateOops);
 
     sender.result.value.send!(Promise.reject(new Error()));
 
-    expect(sender.result.value).toEqual(oopsFailureState);
+    expect(sender.result.value).toEqual(failedStateOops);
     expect((await sender.result.next).value).toEqual(sendingState);
-    expect((await sender.result.next).value).toEqual(unknownFailureState);
+    expect((await sender.result.next).value).toEqual(failedStateUnknown);
 
     sender.result.value.send!(Promise.reject('oops'));
 
-    expect(sender.result.value).toEqual(unknownFailureState);
+    expect(sender.result.value).toEqual(failedStateUnknown);
     expect((await sender.result.next).value).toEqual(sendingState);
-    expect((await sender.result.next).value).toEqual(oopsFailureState);
+    expect((await sender.result.next).value).toEqual(failedStateOops);
 
     sender.result.value.send!(Promise.reject(''));
 
-    expect(sender.result.value).toEqual(oopsFailureState);
+    expect(sender.result.value).toEqual(failedStateOops);
     expect((await sender.result.next).value).toEqual(sendingState);
-    expect((await sender.result.next).value).toEqual(unknownFailureState);
+    expect((await sender.result.next).value).toEqual(failedStateUnknown);
   });
 
-  test('failure recovery', async () => {
+  test('error recovery', async () => {
     sender.result.value.send!(Promise.reject());
 
     expect(sender.result.value).toEqual(idleState);
     expect((await sender.result.next).value).toEqual(sendingState);
-    expect((await sender.result.next).value).toEqual(unknownFailureState);
+    expect((await sender.result.next).value).toEqual(failedStateUnknown);
 
     sender.result.value.send!(Promise.resolve());
 
-    expect(sender.result.value).toEqual(unknownFailureState);
+    expect(sender.result.value).toEqual(failedStateUnknown);
     expect((await sender.result.next).value).toEqual(sendingState);
     expect((await sender.result.next).value).toEqual(idleState);
   });
@@ -124,7 +129,7 @@ describe('useSender()', () => {
 
     expect(sender.result.value).toEqual(idleState);
     expect((await sender.result.next).value).toEqual(sendingState);
-    expect((await sender.result.next).value).toEqual(unknownFailureState);
+    expect((await sender.result.next).value).toEqual(failedStateUnknown);
     expect(effect2).not.toHaveBeenCalled();
   });
 });

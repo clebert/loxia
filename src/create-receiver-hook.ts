@@ -2,25 +2,25 @@ import type {useEffect, useMemo, useRef, useState} from 'batis';
 
 export type ReceiverState<TValue> =
   | ReceivingReceiverState
-  | SuccessReceiverState<TValue>
-  | FailureReceiverState;
+  | SuccessfulReceiverState<TValue>
+  | FailedReceiverState;
 
 export interface ReceivingReceiverState {
   readonly status: 'receiving';
   readonly value?: undefined;
-  readonly reason?: undefined;
+  readonly error?: undefined;
 }
 
-export interface SuccessReceiverState<TValue> {
-  readonly status: 'success';
+export interface SuccessfulReceiverState<TValue> {
+  readonly status: 'successful';
   readonly value: TValue;
-  readonly reason?: undefined;
+  readonly error?: undefined;
 }
 
-export interface FailureReceiverState {
-  readonly status: 'failure';
+export interface FailedReceiverState {
+  readonly status: 'failed';
   readonly value?: undefined;
-  readonly reason: Error;
+  readonly error: Error;
 }
 
 export interface ReceiverHooks {
@@ -40,7 +40,7 @@ export function createReceiverHook(
 
     const [result, setResult] = hooks.useState<
       | {ok: true; value: TValue; signal: Promise<TValue>}
-      | {ok: false; reason: Error; signal: Promise<TValue>}
+      | {ok: false; error: Error; signal: Promise<TValue>}
       | undefined
     >(undefined);
 
@@ -61,11 +61,11 @@ export function createReceiverHook(
           }
 
           if (error instanceof Error) {
-            setResult({ok: false, reason: error, signal});
+            setResult({ok: false, error, signal});
           } else if (typeof error === 'string') {
-            setResult({ok: false, reason: new Error(error), signal});
+            setResult({ok: false, error: new Error(error), signal});
           } else {
-            setResult({ok: false, reason: new Error(), signal});
+            setResult({ok: false, error: new Error(), signal});
           }
         });
     }, [signal]);
@@ -73,8 +73,8 @@ export function createReceiverHook(
     return hooks.useMemo(() => {
       if (signal === result?.signal) {
         return result.ok
-          ? {status: 'success', value: result.value}
-          : {status: 'failure', reason: result.reason};
+          ? {status: 'successful', value: result.value}
+          : {status: 'failed', error: result.error};
       }
 
       return {status: 'receiving'};

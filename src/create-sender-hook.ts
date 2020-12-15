@@ -3,11 +3,11 @@ import type {useCallback, useEffect, useMemo, useRef, useState} from 'batis';
 export type SenderState =
   | IdleSenderState
   | SendingSenderState
-  | FailureSenderState;
+  | FailedSenderState;
 
 export interface IdleSenderState {
   readonly status: 'idle';
-  readonly reason?: undefined;
+  readonly error?: undefined;
 
   readonly send: <TValue>(
     signal: Promise<TValue>,
@@ -17,13 +17,13 @@ export interface IdleSenderState {
 
 export interface SendingSenderState {
   readonly status: 'sending';
-  readonly reason?: undefined;
+  readonly error?: undefined;
   readonly send?: undefined;
 }
 
-export interface FailureSenderState {
-  readonly status: 'failure';
-  readonly reason: Error;
+export interface FailedSenderState {
+  readonly status: 'failed';
+  readonly error: Error;
 
   readonly send: <TValue>(
     signal: Promise<TValue>,
@@ -48,7 +48,7 @@ export function createSenderHook(hooks: SenderHooks): () => SenderState {
     hooks.useEffect(() => () => void (mountedRef.current = false), []);
 
     const [sending, setSending] = hooks.useState(false);
-    const [reason, setReason] = hooks.useState<Error | undefined>(undefined);
+    const [error, setError] = hooks.useState<Error | undefined>(undefined);
 
     const send = hooks.useCallback<IdleSenderState['send']>(
       (signal, effect) => {
@@ -68,10 +68,10 @@ export function createSenderHook(hooks: SenderHooks): () => SenderState {
             }
 
             setSending(false);
-            setReason(undefined);
+            setError(undefined);
             effect?.(value);
           })
-          .catch((error: unknown) => {
+          .catch((maybeError: unknown) => {
             /* istanbul ignore next */
             if (!mountedRef.current) {
               return;
@@ -79,12 +79,12 @@ export function createSenderHook(hooks: SenderHooks): () => SenderState {
 
             setSending(false);
 
-            if (error instanceof Error) {
-              setReason(error);
-            } else if (typeof error === 'string') {
-              setReason(new Error(error));
+            if (maybeError instanceof Error) {
+              setError(maybeError);
+            } else if (typeof maybeError === 'string') {
+              setError(new Error(maybeError));
             } else {
-              setReason(new Error());
+              setError(new Error());
             }
           });
       },
@@ -95,10 +95,10 @@ export function createSenderHook(hooks: SenderHooks): () => SenderState {
       () =>
         sending
           ? {status: 'sending'}
-          : reason
-          ? {status: 'failure', reason, send}
+          : error
+          ? {status: 'failed', error, send}
           : {status: 'idle', send},
-      [sending, reason]
+      [sending, error]
     );
   };
 }
