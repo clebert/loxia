@@ -23,9 +23,9 @@ const failedStateOops: FailedSenderState = {
 };
 
 describe('useSender()', () => {
-  let sender: Batis.HookProcess<typeof useSender>;
+  let sender: Batis.HookService<typeof useSender>;
 
-  beforeEach(() => (sender = Batis.HookProcess.start(useSender, [])));
+  beforeEach(() => (sender = Batis.HookService.start(useSender, [])));
   afterEach(() => sender.stop());
 
   test('successful sending', async () => {
