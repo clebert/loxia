@@ -1,121 +1,108 @@
-import * as Batis from 'batis';
+import {Host} from 'batis';
 import {
   FailedSenderState,
   IdleSenderState,
   SendingSenderState,
+  UseSender,
   createSenderHook,
 } from './create-sender-hook';
+import {defer} from './defer';
+import {HostHistory} from './host-history';
 
-const useSender = createSenderHook(Batis);
-const idleState: IdleSenderState = {status: 'idle', send: expect.any(Function)};
-const sendingState: SendingSenderState = {status: 'sending'};
+const useSender = createSenderHook(Host);
 
-const failedStateUnknown: FailedSenderState = {
-  status: 'failed',
-  error: new Error(),
+const idleState = (): IdleSenderState => ({
+  status: 'idle',
   send: expect.any(Function),
-};
+});
 
-const failedStateOops: FailedSenderState = {
+const sendingState = (): SendingSenderState => ({status: 'sending'});
+
+const failedState = (error: Error): FailedSenderState => ({
   status: 'failed',
-  error: new Error('oops'),
+  error,
   send: expect.any(Function),
-};
+});
 
 describe('useSender()', () => {
-  let sender: Batis.HookService<typeof useSender>;
+  let history: HostHistory<UseSender>;
+  let host: Host<UseSender>;
 
-  beforeEach(() => (sender = Batis.HookService.start(useSender, [])));
-  afterEach(() => sender.stop());
+  beforeEach(() => {
+    history = new HostHistory();
+    host = new Host(useSender, history.push);
+  });
 
   test('successful sending', async () => {
-    sender.result.value.send!(Promise.resolve());
+    host.render();
 
-    expect(sender.result.value).toEqual(idleState);
-    expect((await sender.result.next).value).toEqual(sendingState);
-    expect((await sender.result.next).value).toEqual(idleState);
+    history.renderingEvent?.result.send?.(Promise.resolve());
 
-    sender.result.value.send!(Promise.resolve());
+    await history.next;
+    await history.next;
 
-    expect(sender.result.value).toEqual(idleState);
-    expect((await sender.result.next).value).toEqual(sendingState);
-    expect((await sender.result.next).value).toEqual(idleState);
+    history.renderingEvent?.result.send?.(Promise.resolve());
+
+    await history.next;
+    await history.next;
+    await Promise.resolve();
+
+    expect(history.events).toEqual([
+      {type: 'rendering', result: idleState()},
+      {type: 'rendering', result: sendingState(), async: true},
+      {type: 'rendering', result: idleState(), async: true},
+      {type: 'rendering', result: sendingState(), async: true},
+      {type: 'rendering', result: idleState(), async: true},
+    ]);
   });
 
-  test('unsuccessful sending', async () => {
-    sender.result.value.send!(Promise.reject());
+  test('failed sending', async () => {
+    host.render();
 
-    expect(sender.result.value).toEqual(idleState);
-    expect((await sender.result.next).value).toEqual(sendingState);
-    expect((await sender.result.next).value).toEqual(failedStateUnknown);
+    history.renderingEvent?.result.send?.(Promise.reject());
 
-    sender.result.value.send!(Promise.reject(new Error('oops')));
+    await history.next;
+    await history.next;
 
-    expect(sender.result.value).toEqual(failedStateUnknown);
-    expect((await sender.result.next).value).toEqual(sendingState);
-    expect((await sender.result.next).value).toEqual(failedStateOops);
+    history.renderingEvent?.result.send?.(Promise.reject(new Error('oops')));
 
-    sender.result.value.send!(Promise.reject(new Error()));
+    await history.next;
+    await history.next;
 
-    expect(sender.result.value).toEqual(failedStateOops);
-    expect((await sender.result.next).value).toEqual(sendingState);
-    expect((await sender.result.next).value).toEqual(failedStateUnknown);
+    const defaultError = new Error('Failed to send the signal.');
 
-    sender.result.value.send!(Promise.reject('oops'));
-
-    expect(sender.result.value).toEqual(failedStateUnknown);
-    expect((await sender.result.next).value).toEqual(sendingState);
-    expect((await sender.result.next).value).toEqual(failedStateOops);
-
-    sender.result.value.send!(Promise.reject(''));
-
-    expect(sender.result.value).toEqual(failedStateOops);
-    expect((await sender.result.next).value).toEqual(sendingState);
-    expect((await sender.result.next).value).toEqual(failedStateUnknown);
+    expect(history.events).toEqual([
+      {type: 'rendering', result: idleState()},
+      {type: 'rendering', result: sendingState(), async: true},
+      {type: 'rendering', result: failedState(defaultError), async: true},
+      {type: 'rendering', result: sendingState(), async: true},
+      {type: 'rendering', result: failedState(new Error('oops')), async: true},
+    ]);
   });
 
-  test('error recovery', async () => {
-    sender.result.value.send!(Promise.reject());
+  test('send transition', async () => {
+    const signalA = defer<undefined>();
+    const signalB = defer<undefined>();
 
-    expect(sender.result.value).toEqual(idleState);
-    expect((await sender.result.next).value).toEqual(sendingState);
-    expect((await sender.result.next).value).toEqual(failedStateUnknown);
+    host.render();
 
-    sender.result.value.send!(Promise.resolve());
+    expect(history.renderingEvent?.result.send?.(signalA.promise)).toBe(true);
+    expect(history.renderingEvent?.result.send?.(signalB.promise)).toBe(false);
 
-    expect(sender.result.value).toEqual(failedStateUnknown);
-    expect((await sender.result.next).value).toEqual(sendingState);
-    expect((await sender.result.next).value).toEqual(idleState);
-  });
+    await history.next;
 
-  test('multiple sending', async () => {
-    const {send} = sender.result.value;
+    signalB.resolve(undefined);
 
-    send!(Promise.resolve());
-    send!(Promise.resolve());
+    await Promise.resolve();
 
-    await expect(sender.result.next).rejects.toThrow(
-      new Error('A signal is already being sent.')
-    );
-  });
+    signalA.resolve(undefined);
 
-  test('effect triggering', async () => {
-    const effect1 = jest.fn();
+    await history.next;
 
-    sender.result.value.send!(Promise.resolve('a'), effect1);
-
-    expect(sender.result.value).toEqual(idleState);
-    expect((await sender.result.next).value).toEqual(sendingState);
-    expect((await sender.result.next).value).toEqual(idleState);
-    expect(effect1).toHaveBeenCalledWith('a');
-
-    const effect2 = jest.fn();
-
-    sender.result.value.send!(Promise.reject(), effect2);
-
-    expect(sender.result.value).toEqual(idleState);
-    expect((await sender.result.next).value).toEqual(sendingState);
-    expect((await sender.result.next).value).toEqual(failedStateUnknown);
-    expect(effect2).not.toHaveBeenCalled();
+    expect(history.events).toEqual([
+      {type: 'rendering', result: idleState()},
+      {type: 'rendering', result: sendingState(), async: true},
+      {type: 'rendering', result: idleState(), async: true},
+    ]);
   });
 });

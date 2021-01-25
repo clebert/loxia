@@ -1,4 +1,9 @@
-import type Batis from 'batis';
+import type {Host} from 'batis';
+import {createBinderHook} from './create-binder-hook';
+
+export type UseReceiver = <TValue>(
+  signal: Promise<TValue>
+) => ReceiverState<TValue>;
 
 export type ReceiverState<TValue> =
   | ReceivingReceiverState
@@ -23,65 +28,72 @@ export interface FailedReceiverState {
   readonly error: Error;
 }
 
-export type ReceiverHook = <TValue>(
-  signal: Promise<TValue>
-) => ReceiverState<TValue>;
-
-export interface ReceiverInit {
-  readonly useEffect: typeof Batis.useEffect;
-  readonly useMemo: typeof Batis.useMemo;
-  readonly useRef: typeof Batis.useRef;
-  readonly useState: typeof Batis.useState;
-}
-
-export function createReceiverHook(init: ReceiverInit): ReceiverHook {
-  const {useEffect, useMemo, useRef, useState} = init;
+/**
+ * A receiver is a state machine which allows the reception of a signal in the
+ * form of a promise passed as an argument. A receiver is always in one of the
+ * following states `receiving`, `successful`, or `failed`. As long as the
+ * reference to the passed promise remains the same, a receiver represents the
+ * state of the promise. When a reference to a new promise is passed, the old
+ * promise no longer affects the receiver state.
+ *
+ * It makes sense to use a receiver if an asynchronous operation is based on
+ * user input. If the user input changes in the meantime and a new asynchronous
+ * operation overwrites the old one, the old one should no longer have any effect.
+ *
+ * Note: A receiver automatically binds its asynchronous callback functions
+ * using the `useBinder` Hook.
+ */
+export function createReceiverHook(
+  hooks: Omit<typeof Host, 'prototype'>
+): UseReceiver {
+  const {useEffect, useMemo, useState} = hooks;
+  const useBinder = createBinderHook(hooks);
 
   return <TValue>(signal: Promise<TValue>) => {
-    const mountedRef = useRef(true);
+    const bind = useBinder();
 
-    useEffect(() => () => void (mountedRef.current = false), []);
-
-    const [result, setResult] = useState<
-      | {ok: true; value: TValue; signal: Promise<TValue>}
-      | {ok: false; error: Error; signal: Promise<TValue>}
-      | undefined
-    >(undefined);
+    const [state, setState] = useState<
+      ReceiverState<TValue> & {readonly signal: Promise<TValue>}
+    >({status: 'receiving', signal});
 
     useEffect(() => {
+      setState((prevState) =>
+        prevState.status === 'receiving' && prevState.signal === signal
+          ? prevState
+          : {status: 'receiving', signal}
+      );
+
       signal
-        ?.then((value) => {
-          /* istanbul ignore next */
-          if (!mountedRef.current) {
-            return;
-          }
-
-          setResult({ok: true, value, signal});
-        })
-        .catch((error: unknown) => {
-          /* istanbul ignore next */
-          if (!mountedRef.current) {
-            return;
-          }
-
-          if (error instanceof Error) {
-            setResult({ok: false, error, signal});
-          } else if (typeof error === 'string') {
-            setResult({ok: false, error: new Error(error), signal});
-          } else {
-            setResult({ok: false, error: new Error(), signal});
-          }
-        });
+        .then(
+          bind((value) =>
+            setState((prevState) =>
+              prevState.status !== 'receiving' || prevState.signal !== signal
+                ? prevState
+                : {status: 'successful', value, signal}
+            )
+          )
+        )
+        .catch(
+          bind((error: unknown) =>
+            setState((prevState) =>
+              prevState.status !== 'receiving' || prevState.signal !== signal
+                ? prevState
+                : error instanceof Error
+                ? {status: 'failed', error, signal}
+                : {
+                    status: 'failed',
+                    error: new Error('Failed to receive the signal.'),
+                    signal,
+                  }
+            )
+          )
+        );
     }, [signal]);
 
     return useMemo(() => {
-      if (signal === result?.signal) {
-        return result.ok
-          ? {status: 'successful', value: result.value}
-          : {status: 'failed', error: result.error};
-      }
+      const {signal: stateSignal, ...stateRest} = state;
 
-      return {status: 'receiving'};
-    }, [signal, result]);
+      return signal === stateSignal ? stateRest : {status: 'receiving'};
+    }, [state, signal]);
   };
 }

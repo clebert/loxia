@@ -1,7 +1,7 @@
 {
   "name": "loxia",
   "version": "0.2.0",
-  "description": "TODO.",
+  "description": "Implementing JavaScript state machines using React Hooks.",
   "bugs": {
     "url": "https://github.com/clebert/loxia/issues"
   },
@@ -32,7 +32,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "batis": "^2.0.0"
+    "batis": "^7.2.0"
   },
   "devDependencies": {
     "@babel/core": "^7.12.9",
@@ -50,7 +50,7 @@
   "size-limit": [
     {
       "path": "lib/esm/index.js",
-      "limit": "500 B"
+      "limit": "700 B"
     }
   ]
 }

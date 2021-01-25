@@ -1,4 +1,8 @@
-import type Batis from 'batis';
+import type {Host} from 'batis';
+import {createBinderHook} from './create-binder-hook';
+import {createTransitionHook} from './create-transition-hook';
+
+export type UseSender = () => SenderState;
 
 export type SenderState =
   | IdleSenderState
@@ -8,11 +12,7 @@ export type SenderState =
 export interface IdleSenderState {
   readonly status: 'idle';
   readonly error?: undefined;
-
-  readonly send: <TValue>(
-    signal: Promise<TValue>,
-    effect?: Effect<TValue>
-  ) => void;
+  readonly send: (signal: Promise<unknown>) => boolean;
 }
 
 export interface SendingSenderState {
@@ -24,81 +24,54 @@ export interface SendingSenderState {
 export interface FailedSenderState {
   readonly status: 'failed';
   readonly error: Error;
-
-  readonly send: <TValue>(
-    signal: Promise<TValue>,
-    effect?: Effect<TValue>
-  ) => void;
+  readonly send: (signal: Promise<unknown>) => boolean;
 }
 
-export type Effect<TValue> = (value: TValue) => void;
-export type SenderHook = () => SenderState;
-
-export interface SenderInit {
-  readonly useCallback: typeof Batis.useCallback;
-  readonly useEffect: typeof Batis.useEffect;
-  readonly useMemo: typeof Batis.useMemo;
-  readonly useRef: typeof Batis.useRef;
-  readonly useState: typeof Batis.useState;
-}
-
-export function createSenderHook(init: SenderInit): SenderHook {
-  const {useCallback, useEffect, useMemo, useRef, useState} = init;
+/**
+ * A sender is a state machine which allows to send exactly one signal at a
+ * time.
+ *
+ * Note: A sender automatically binds its asynchronous callback functions using
+ * the `useBinder` Hook.
+ */
+export function createSenderHook(
+  hooks: Omit<typeof Host, 'prototype'>
+): UseSender {
+  const {useMemo, useState} = hooks;
+  const useBinder = createBinderHook(hooks);
+  const useTransition = createTransitionHook(hooks);
 
   return () => {
-    const mountedRef = useRef(true);
+    const bind = useBinder();
 
-    useEffect(() => () => void (mountedRef.current = false), []);
+    const [state, setState] = useState<
+      | {readonly status: 'idle'}
+      | {readonly status: 'sending'}
+      | {readonly status: 'failed'; readonly error: Error}
+    >({status: 'idle'});
 
-    const [sending, setSending] = useState(false);
-    const [error, setError] = useState<Error | undefined>(undefined);
+    const send = useTransition(
+      (signal: Promise<any>) => {
+        setState({status: 'sending'});
 
-    const send = useCallback<IdleSenderState['send']>((signal, effect) => {
-      setSending((prevSending) => {
-        if (prevSending) {
-          throw new Error('A signal is already being sent.');
-        }
-
-        return true;
-      });
-
-      signal
-        .then((value) => {
-          /* istanbul ignore next */
-          if (!mountedRef.current) {
-            return;
-          }
-
-          setSending(false);
-          setError(undefined);
-          effect?.(value);
-        })
-        .catch((maybeError: unknown) => {
-          /* istanbul ignore next */
-          if (!mountedRef.current) {
-            return;
-          }
-
-          setSending(false);
-
-          if (maybeError instanceof Error) {
-            setError(maybeError);
-          } else if (typeof maybeError === 'string') {
-            setError(new Error(maybeError));
-          } else {
-            setError(new Error());
-          }
-        });
-    }, []);
+        signal.then(bind(() => setState({status: 'idle'}))).catch(
+          bind((error: unknown) =>
+            setState({
+              status: 'failed',
+              error:
+                error instanceof Error
+                  ? error
+                  : new Error('Failed to send the signal.'),
+            })
+          )
+        );
+      },
+      [state]
+    );
 
     return useMemo(
-      () =>
-        sending
-          ? {status: 'sending'}
-          : error
-          ? {status: 'failed', error, send}
-          : {status: 'idle', send},
-      [sending, error]
+      () => (state.status === 'sending' ? state : {...state, send}),
+      [state]
     );
   };
 }
