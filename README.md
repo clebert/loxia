@@ -25,8 +25,8 @@ npm install loxia --save
 
 ## Motivation
 
-I consider React Hooks to be particularly suitable for implementing side-effect
-dependent state machines. Based on this idea, I developed a
+I consider React Hooks to be particularly suitable for implementing state
+machines. Based on this idea, I developed a
 [bookmark manager](https://github.com/clebert/bookmark.wtf). It's UI makes
 intensive use of the Hooks and patterns developed here and serves as a real
 world test.
