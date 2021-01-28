@@ -1,26 +1,24 @@
-import type {Host} from 'batis';
+import {Host} from 'batis';
 
-export type UseTransition = <TCallback extends (...args: any[]) => any>(
-  callback: TCallback,
-  dependencies: readonly unknown[]
-) => Transition<TCallback>;
+export type UseTransition = (
+  ...dependencies: readonly [unknown, ...unknown[]]
+) => Transition;
 
-export type Transition<TCallback extends (...args: any[]) => void> = (
-  ...args: Parameters<TCallback>
-) => boolean;
+export type Transition = (callback?: () => void) => boolean;
 
 /**
- * A transition is a function with special runtime behavior suitable for
- * enabling transitions of state machines. A transition works only once and only
- * if its dependencies have not changed, so it should depend on the state of its
+ * A transition is a function with special runtime behavior that can be used to
+ * implement the correct behavior of the transition methods of a state machine.
+ * A transition executes the passed callback once and returns true if its
+ * dependencies have not changed, so it should depend on the state of the
  * associated state machine.
  */
 export function createTransitionHook(
-  hooks: Pick<typeof Host, 'useCallback' | 'useMemo' | 'useRef'>
+  hooks: Omit<typeof Host, 'prototype'>
 ): UseTransition {
   const {useCallback, useMemo, useRef} = hooks;
 
-  return (callback, dependencies) => {
+  return (...dependencies) => {
     const token = useMemo(() => ({}), dependencies);
     const tokenRef = useRef(token);
 
@@ -29,16 +27,16 @@ export function createTransitionHook(
     let called = false;
 
     return useCallback(
-      (...args) => {
-        if (called || tokenRef.current !== token) {
-          return false;
+      (callback) => {
+        if (!called && tokenRef.current === token) {
+          called = true;
+
+          callback?.();
+
+          return true;
         }
 
-        called = true;
-
-        callback(...args);
-
-        return true;
+        return false;
       },
       [token]
     );

@@ -1,108 +1,74 @@
-import {Host} from 'batis';
-import {
-  FailedSenderState,
-  IdleSenderState,
-  SendingSenderState,
-  UseSender,
-  createSenderHook,
-} from './create-sender-hook';
-import {defer} from './defer';
-import {HostHistory} from './host-history';
+import {Host, Subject} from 'batis';
+import {createSenderHook} from './create-sender-hook';
 
 const useSender = createSenderHook(Host);
+const idleSender = () => ({state: 'idle', send: expect.any(Function)});
+const sendingSender = () => ({state: 'sending'});
 
-const idleState = (): IdleSenderState => ({
-  status: 'idle',
-  send: expect.any(Function),
-});
-
-const sendingState = (): SendingSenderState => ({status: 'sending'});
-
-const failedState = (error: Error): FailedSenderState => ({
-  status: 'failed',
-  error,
+const failedSender = (reason: unknown) => ({
+  state: 'failed',
+  reason,
   send: expect.any(Function),
 });
 
 describe('useSender()', () => {
-  let history: HostHistory<UseSender>;
-  let host: Host<UseSender>;
-
-  beforeEach(() => {
-    history = new HostHistory();
-    host = new Host(useSender, history.push);
-  });
-
   test('successful sending', async () => {
-    host.render();
+    const subject = new Subject(useSender);
 
-    history.renderingEvent?.result.send?.(Promise.resolve());
+    subject.host.render();
 
-    await history.next;
-    await history.next;
+    subject.latestEvent?.result!.send?.(Promise.resolve());
 
-    history.renderingEvent?.result.send?.(Promise.resolve());
+    expect(await subject.nextEventBatch).toEqual([
+      Host.createRenderingEvent(idleSender()),
+      Host.createRenderingEvent(sendingSender()),
+      Host.createRenderingEvent(idleSender()),
+    ]);
 
-    await history.next;
-    await history.next;
-    await Promise.resolve();
+    subject.latestEvent?.result!.send?.(Promise.resolve());
 
-    expect(history.events).toEqual([
-      {type: 'rendering', result: idleState()},
-      {type: 'rendering', result: sendingState(), async: true},
-      {type: 'rendering', result: idleState(), async: true},
-      {type: 'rendering', result: sendingState(), async: true},
-      {type: 'rendering', result: idleState(), async: true},
+    expect(await subject.nextEventBatch).toEqual([
+      Host.createRenderingEvent(idleSender()),
+      Host.createRenderingEvent(sendingSender()),
     ]);
   });
 
   test('failed sending', async () => {
-    host.render();
+    const subject = new Subject(useSender);
 
-    history.renderingEvent?.result.send?.(Promise.reject());
+    subject.host.render();
 
-    await history.next;
-    await history.next;
+    subject.latestEvent?.result!.send?.(Promise.reject(new Error('1')));
 
-    history.renderingEvent?.result.send?.(Promise.reject(new Error('oops')));
+    expect(await subject.nextEventBatch).toEqual([
+      Host.createRenderingEvent(failedSender(new Error('1'))),
+      Host.createRenderingEvent(sendingSender()),
+      Host.createRenderingEvent(idleSender()),
+    ]);
 
-    await history.next;
-    await history.next;
+    subject.latestEvent?.result!.send?.(Promise.reject(new Error('2')));
 
-    const defaultError = new Error('Failed to send the signal.');
-
-    expect(history.events).toEqual([
-      {type: 'rendering', result: idleState()},
-      {type: 'rendering', result: sendingState(), async: true},
-      {type: 'rendering', result: failedState(defaultError), async: true},
-      {type: 'rendering', result: sendingState(), async: true},
-      {type: 'rendering', result: failedState(new Error('oops')), async: true},
+    expect(await subject.nextEventBatch).toEqual([
+      Host.createRenderingEvent(failedSender(new Error('2'))),
+      Host.createRenderingEvent(sendingSender()),
     ]);
   });
 
   test('send transition', async () => {
-    const signalA = defer<undefined>();
-    const signalB = defer<undefined>();
+    const subject = new Subject(useSender);
 
-    host.render();
+    subject.host.render();
 
-    expect(history.renderingEvent?.result.send?.(signalA.promise)).toBe(true);
-    expect(history.renderingEvent?.result.send?.(signalB.promise)).toBe(false);
+    expect(subject.latestEvent?.result!.send?.(Promise.resolve())).toBe(true);
 
-    await history.next;
+    expect(
+      subject.latestEvent?.result!.send?.(Promise.reject(new Error()))
+    ).toBe(false);
 
-    signalB.resolve(undefined);
-
-    await Promise.resolve();
-
-    signalA.resolve(undefined);
-
-    await history.next;
-
-    expect(history.events).toEqual([
-      {type: 'rendering', result: idleState()},
-      {type: 'rendering', result: sendingState(), async: true},
-      {type: 'rendering', result: idleState(), async: true},
+    expect(await subject.nextEventBatch).toEqual([
+      Host.createRenderingEvent(idleSender()),
+      Host.createRenderingEvent(sendingSender()),
+      Host.createRenderingEvent(idleSender()),
     ]);
   });
 });

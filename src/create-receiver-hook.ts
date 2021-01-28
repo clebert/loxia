@@ -1,31 +1,29 @@
 import type {Host} from 'batis';
 import {createBinderHook} from './create-binder-hook';
 
-export type UseReceiver = <TValue>(
-  signal: Promise<TValue>
-) => ReceiverState<TValue>;
+export type UseReceiver = <TValue>(signal: Promise<TValue>) => Receiver<TValue>;
 
-export type ReceiverState<TValue> =
-  | ReceivingReceiverState
-  | SuccessfulReceiverState<TValue>
-  | FailedReceiverState;
+export type Receiver<TValue> =
+  | ReceivingReceiver
+  | SuccessfulReceiver<TValue>
+  | FailedReceiver;
 
-export interface ReceivingReceiverState {
-  readonly status: 'receiving';
+export interface ReceivingReceiver {
+  readonly state: 'receiving';
   readonly value?: undefined;
-  readonly error?: undefined;
+  readonly reason?: undefined;
 }
 
-export interface SuccessfulReceiverState<TValue> {
-  readonly status: 'successful';
+export interface SuccessfulReceiver<TValue> {
+  readonly state: 'successful';
   readonly value: TValue;
-  readonly error?: undefined;
+  readonly reason?: undefined;
 }
 
-export interface FailedReceiverState {
-  readonly status: 'failed';
+export interface FailedReceiver {
+  readonly state: 'failed';
   readonly value?: undefined;
-  readonly error: Error;
+  readonly reason: unknown;
 }
 
 /**
@@ -38,62 +36,59 @@ export interface FailedReceiverState {
  *
  * It makes sense to use a receiver if an asynchronous operation is based on
  * user input. If the user input changes in the meantime and a new asynchronous
- * operation overwrites the old one, the old one should no longer have any effect.
- *
- * Note: A receiver automatically binds its asynchronous callback functions
- * using the `useBinder` Hook.
+ * operation overwrites the old one, the old one should no longer have any
+ * effect.
  */
 export function createReceiverHook(
   hooks: Omit<typeof Host, 'prototype'>
 ): UseReceiver {
-  const {useEffect, useMemo, useState} = hooks;
+  const {useEffect, useRef, useState} = hooks;
   const useBinder = createBinderHook(hooks);
 
   return <TValue>(signal: Promise<TValue>) => {
     const bind = useBinder();
+    const receiverRef = useRef<Receiver<TValue>>({state: 'receiving'});
+    const signalRef = useRef(signal);
 
-    const [state, setState] = useState<
-      ReceiverState<TValue> & {readonly signal: Promise<TValue>}
-    >({status: 'receiving', signal});
+    if (
+      signalRef.current !== signal &&
+      receiverRef.current.state !== 'receiving'
+    ) {
+      receiverRef.current = {state: 'receiving'};
+    }
+
+    signalRef.current = signal;
+
+    const [, rerender] = useState({});
 
     useEffect(() => {
-      setState((prevState) =>
-        prevState.status === 'receiving' && prevState.signal === signal
-          ? prevState
-          : {status: 'receiving', signal}
-      );
-
       signal
         .then(
-          bind((value) =>
-            setState((prevState) =>
-              prevState.status !== 'receiving' || prevState.signal !== signal
-                ? prevState
-                : {status: 'successful', value, signal}
-            )
-          )
+          bind((value) => {
+            if (
+              signalRef.current === signal &&
+              receiverRef.current.state === 'receiving'
+            ) {
+              receiverRef.current = {state: 'successful', value};
+
+              rerender({});
+            }
+          })
         )
         .catch(
-          bind((error: unknown) =>
-            setState((prevState) =>
-              prevState.status !== 'receiving' || prevState.signal !== signal
-                ? prevState
-                : error instanceof Error
-                ? {status: 'failed', error, signal}
-                : {
-                    status: 'failed',
-                    error: new Error('Failed to receive the signal.'),
-                    signal,
-                  }
-            )
-          )
+          bind((reason: unknown) => {
+            if (
+              signalRef.current === signal &&
+              receiverRef.current.state === 'receiving'
+            ) {
+              receiverRef.current = {state: 'failed', reason};
+
+              rerender({});
+            }
+          })
         );
     }, [signal]);
 
-    return useMemo(() => {
-      const {signal: stateSignal, ...stateRest} = state;
-
-      return signal === stateSignal ? stateRest : {status: 'receiving'};
-    }, [state, signal]);
+    return receiverRef.current;
   };
 }

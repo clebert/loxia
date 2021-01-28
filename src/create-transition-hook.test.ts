@@ -1,85 +1,63 @@
-import {Host} from 'batis';
-import {UseTransition, createTransitionHook} from './create-transition-hook';
-import {HostHistory} from './host-history';
+import {Host, Subject} from 'batis';
+import {createTransitionHook} from './create-transition-hook';
 
 const useTransition = createTransitionHook(Host);
 
 describe('useTransition()', () => {
-  let hostHistory: HostHistory<UseTransition>;
+  test('a transition returns true only once', () => {
+    const subject = new Subject(useTransition);
 
-  beforeEach(() => {
-    hostHistory = new HostHistory();
-  });
+    subject.host.render(0);
 
-  test('a transition works only once', () => {
-    const host = new Host(useTransition, hostHistory.push);
     const callback = jest.fn();
+    const transition1 = subject.latestEvent?.result!;
 
-    host.render(callback, [0]);
+    expect(transition1(callback)).toBe(true);
+    expect(transition1(callback)).toBe(false);
 
-    const transition1 = hostHistory.renderingEvent!.result;
+    subject.host.render(0);
 
-    expect(transition1()).toBe(true);
-    expect(transition1()).toBe(false);
+    expect(transition1(callback)).toBe(false);
 
-    host.render(callback, [0]);
+    subject.host.render(1);
 
-    expect(transition1()).toBe(false);
+    const transition2 = subject.latestEvent?.result!;
 
-    host.render(callback, [1]);
+    subject.host.render(1);
 
-    const transition2 = hostHistory.renderingEvent!.result;
-
-    host.render(callback, [1]);
-
-    expect(transition2()).toBe(true);
-    expect(transition2()).toBe(false);
+    expect(transition2(callback)).toBe(true);
+    expect(transition2(callback)).toBe(false);
     expect(callback).toHaveBeenCalledTimes(2);
   });
 
-  test('a transition does not work if its dependencies have changed', () => {
-    const host = new Host(useTransition, hostHistory.push);
+  test('a transition returns false if its dependencies have changed', () => {
+    const subject = new Subject(useTransition);
+
+    subject.host.render(0);
+
+    const transition = subject.latestEvent?.result!;
+
+    subject.host.render(1);
+
     const callback = jest.fn();
 
-    host.render(callback, [0]);
-
-    const transition = hostHistory.renderingEvent!.result!;
-
-    host.render(callback, [1]);
-
-    expect(transition()).toBe(false);
+    expect(transition(callback)).toBe(false);
     expect(callback).toHaveBeenCalledTimes(0);
   });
 
-  test('a failed transition no longer works', () => {
-    const host = new Host(useTransition, hostHistory.push);
-
-    const callback = jest.fn(() => {
-      throw new Error('oops');
-    });
-
-    host.render(callback, [0]);
-
-    const transition = hostHistory.renderingEvent!.result;
-
-    expect(transition).toThrow(new Error('oops'));
-    expect(transition()).toBe(false);
-    expect(callback).toHaveBeenCalledTimes(1);
-  });
-
   test('a transition is stable as long as its dependencies have not changed', () => {
-    const host = new Host(useTransition, hostHistory.push);
+    const subject = new Subject(useTransition);
 
-    host.render(jest.fn(), [0]);
+    subject.host.render(0);
 
-    const transition = hostHistory.renderingEvent!.result;
+    const transition = subject.latestEvent?.result!;
 
-    host.render(jest.fn(), [0]);
+    subject.host.render(0);
 
-    expect(hostHistory.renderingEvent!.result).toBe(transition);
+    expect(subject.latestEvent?.result).toBe(transition);
 
-    host.render(jest.fn(), [1]);
+    subject.host.render(1);
 
-    expect(hostHistory.renderingEvent!.result).not.toBe(transition);
+    expect(subject.latestEvent?.result).not.toBe(transition);
   });
 });

@@ -32,7 +32,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "batis": "^7.2.0"
+    "batis": "^8.2.0"
   },
   "devDependencies": {
     "@babel/core": "^7.12.9",
@@ -50,7 +50,7 @@
   "size-limit": [
     {
       "path": "lib/esm/index.js",
-      "limit": "700 B"
+      "limit": "500 B"
     }
   ]
 }

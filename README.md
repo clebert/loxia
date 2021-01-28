@@ -41,9 +41,10 @@ with React is shown as a comment.
 
 ### `useTransition`
 
-A transition is a function with special runtime behavior suitable for enabling
-transitions of state machines. A transition works only once and only if its
-dependencies have not changed, so it should depend on the state of its
+A transition is a function with special runtime behavior that can be used to
+implement the correct behavior of the transition methods of a state machine. A
+transition executes the passed callback once and returns true if its
+dependencies have not changed, so it should depend on the state of the
 associated state machine.
 
 <details>
@@ -52,21 +53,27 @@ associated state machine.
 ```js
 import {createTransitionHook} from 'loxia';
 import {Host} from 'batis'; // import * as React from 'react';
-```
 
-```js
 const useTransition = createTransitionHook(Host /* React */);
-```
 
-```js
-function useToggle() {
-  const [state, setState] = Host /* React */.useState(false);
+function useLock(): Lock {
+  const [locked, setLocked] = Host /* React */.useState(false);
+  const transition = useTransition(locked);
 
-  const toggleState = useTransition(() => {
-    setState((prevState) => !prevState);
-  }, [state]);
+  const lock = Host /* React */.useCallback(
+    () => transition(() => setLocked(true)),
+    [transition]
+  );
 
-  return [state, toggleState];
+  const unlock = Host /* React */.useCallback(
+    () => transition(() => setLocked(false)),
+    [transition]
+  );
+
+  return Host /* React */.useMemo(
+    () => (locked ? {locked, unlock} : {locked, lock}),
+    [locked]
+  );
 }
 ```
 
@@ -77,21 +84,18 @@ function useToggle() {
 
 ```ts
 function createTransitionHook(
-  hooks: Pick<typeof Host, 'useCallback' | 'useMemo' | 'useRef'>
+  hooks: Omit<typeof Host, 'prototype'>
 ): UseTransition;
 ```
 
 ```ts
-type UseTransition = <TCallback extends (...args: any[]) => any>(
-  callback: TCallback,
-  dependencies: readonly unknown[]
-) => Transition<TCallback>;
+type UseTransition = (
+  ...dependencies: readonly [unknown, ...unknown[]]
+) => Transition;
 ```
 
 ```ts
-type Transition<TCallback extends (...args: any[]) => void> = (
-  ...args: Parameters<TCallback>
-) => boolean;
+type Transition = (callback?: () => void) => boolean;
 ```
 
 </details>
@@ -110,13 +114,9 @@ to bind the callback functions of `Promise.then`, `Promise.catch`, and also
 ```js
 import {createBinderHook} from 'loxia';
 import {Host} from 'batis'; // import * as React from 'react';
-```
 
-```js
 const useBinder = createBinderHook(Host /* React */);
-```
 
-```js
 function useExample() {
   const bind = useBinder();
 
@@ -136,9 +136,7 @@ function useExample() {
   <summary>Type definitions</summary>
 
 ```ts
-function createBinderHook(
-  hooks: Pick<typeof Host, 'useCallback' | 'useEffect' | 'useRef'>
-): UseBinder;
+function createBinderHook(hooks: Omit<typeof Host, 'prototype'>): UseBinder;
 ```
 
 ```ts
@@ -172,22 +170,15 @@ It makes sense to use a receiver if an asynchronous operation is based on user
 input. If the user input changes in the meantime and a new asynchronous
 operation overwrites the old one, the old one should no longer have any effect.
 
-Note: A receiver automatically binds its asynchronous callback functions using
-the `useBinder` Hook.
-
 <details>
   <summary>Usage example</summary>
 
 ```js
 import {createReceiverHook} from 'loxia';
 import {Host} from 'batis'; // import * as React from 'react';
-```
 
-```js
 const useReceiver = createReceiverHook(Host /* React */);
-```
 
-```js
 function useAsyncJsonData(url) {
   const signal = Host /* React */.useMemo(
     () => fetch(url).then((response) => response.json()),
@@ -208,31 +199,31 @@ function createReceiverHook(hooks: Omit<typeof Host, 'prototype'>): UseReceiver;
 ```
 
 ```ts
-type UseReceiver = <TValue>(signal: Promise<TValue>) => ReceiverState<TValue>;
+type UseReceiver = <TValue>(signal: Promise<TValue>) => Receiver<TValue>;
 ```
 
 ```ts
-type ReceiverState<TValue> =
-  | ReceivingReceiverState
-  | SuccessfulReceiverState<TValue>
-  | FailedReceiverState;
+type Receiver<TValue> =
+  | ReceivingReceiver
+  | SuccessfulReceiver<TValue>
+  | FailedReceiver;
 
-interface ReceivingReceiverState {
-  readonly status: 'receiving';
+interface ReceivingReceiver {
+  readonly state: 'receiving';
   readonly value?: undefined;
-  readonly error?: undefined;
+  readonly reason?: undefined;
 }
 
-interface SuccessfulReceiverState<TValue> {
-  readonly status: 'successful';
+interface SuccessfulReceiver<TValue> {
+  readonly state: 'successful';
   readonly value: TValue;
-  readonly error?: undefined;
+  readonly reason?: undefined;
 }
 
-interface FailedReceiverState {
-  readonly status: 'failed';
+interface FailedReceiver {
+  readonly state: 'failed';
   readonly value?: undefined;
-  readonly error: Error;
+  readonly reason: unknown;
 }
 ```
 
@@ -242,9 +233,6 @@ interface FailedReceiverState {
 
 A sender is a state machine which allows to send exactly one signal at a time.
 
-Note: A sender automatically binds its asynchronous callback functions using the
-`useBinder` Hook.
-
 <details>
   <summary>Type definitions</summary>
 
@@ -253,52 +241,32 @@ function createSenderHook(hooks: Omit<typeof Host, 'prototype'>): UseSender;
 ```
 
 ```ts
-type UseSender = () => SenderState;
+type UseSender = () => Sender;
 ```
 
 ```ts
-type SenderState = IdleSenderState | SendingSenderState | FailedSenderState;
+type Sender = IdleSender | SendingSender | FailedSender;
 
-interface IdleSenderState {
-  readonly status: 'idle';
-  readonly error?: undefined;
-  readonly send: (signal: Promise<unknown>) => boolean;
+interface IdleSender {
+  readonly state: 'idle';
+  readonly reason?: undefined;
+
+  send(signal: Promise<unknown>): boolean;
 }
 
-interface SendingSenderState {
-  readonly status: 'sending';
-  readonly error?: undefined;
+interface SendingSender {
+  readonly state: 'sending';
+  readonly reason?: undefined;
   readonly send?: undefined;
 }
 
-interface FailedSenderState {
-  readonly status: 'failed';
-  readonly error: Error;
-  readonly send: (signal: Promise<unknown>) => boolean;
+interface FailedSender {
+  readonly state: 'failed';
+  readonly reason: unknown;
+
+  send(signal: Promise<unknown>): boolean;
 }
 ```
-
-</details>
-
-## Development
-
-<details>
-  <summary>Publishing a new release</summary>
-
-```
-npm run release patch
-```
-
-```
-npm run release minor
-```
-
-```
-npm run release major
-```
-
-After a new release has been created by pushing the tag, it must be published
-via the GitHub UI. This triggers the final publication to npm.
 
 </details>
 

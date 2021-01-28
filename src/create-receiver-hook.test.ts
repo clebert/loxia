@@ -1,112 +1,72 @@
-import {Host} from 'batis';
-import {
-  FailedReceiverState,
-  ReceivingReceiverState,
-  SuccessfulReceiverState,
-  UseReceiver,
-  createReceiverHook,
-} from './create-receiver-hook';
-import {defer} from './defer';
-import {HostHistory} from './host-history';
+import {Host, Subject} from 'batis';
+import {UseReceiver, createReceiverHook} from './create-receiver-hook';
 
 const useReceiver = createReceiverHook(Host);
-const receivingState = (): ReceivingReceiverState => ({status: 'receiving'});
-
-const successfulState = (value: string): SuccessfulReceiverState<string> => ({
-  status: 'successful',
-  value,
-});
-
-const failedState = (error: Error): FailedReceiverState => ({
-  status: 'failed',
-  error,
-});
+const receivingReceiver = () => ({state: 'receiving'});
+const successfulReceiver = (value: string) => ({state: 'successful', value});
+const failedReceiver = (reason: unknown) => ({state: 'failed', reason});
 
 describe('useReceiver()', () => {
-  let history: HostHistory<UseReceiver>;
-  let host: Host<UseReceiver>;
+  let subject: Subject<UseReceiver>;
 
   beforeEach(() => {
-    history = new HostHistory();
-    host = new Host(useReceiver, history.push);
+    subject = new Subject(useReceiver);
   });
 
   test('successful receiving', async () => {
-    host.render(Promise.resolve('a'));
+    subject.host.render(Promise.resolve('a'));
 
-    await history.next;
+    expect(await subject.nextEventBatch).toEqual([
+      Host.createRenderingEvent(successfulReceiver('a')),
+      Host.createRenderingEvent(receivingReceiver()),
+    ]);
 
-    host.render(Promise.resolve('b'));
-    host.render(Promise.resolve('c'));
+    subject.host.render(Promise.resolve('b'));
+    subject.host.render(Promise.resolve('c'));
 
-    await history.next;
+    expect(await subject.nextEventBatch).toEqual([
+      Host.createRenderingEvent(successfulReceiver('c')),
+      Host.createRenderingEvent(receivingReceiver()),
+      Host.createRenderingEvent(receivingReceiver()),
+    ]);
 
-    const signalD = defer<string>();
-    const signalE = defer<string>();
+    subject.host.render(Promise.resolve().then(() => 'd'));
+    subject.host.render(Promise.resolve('e'));
 
-    host.render(signalD.promise);
-    host.render(signalE.promise);
-
-    signalE.resolve('e');
-
-    await history.next;
-
-    signalD.resolve('d');
-
-    await Promise.resolve();
-
-    expect(history.events).toEqual([
-      {type: 'rendering', result: receivingState()},
-      {type: 'rendering', result: successfulState('a'), async: true},
-      {type: 'rendering', result: receivingState(), interim: true},
-      {type: 'rendering', result: receivingState()},
-      {type: 'rendering', result: receivingState(), interim: true},
-      {type: 'rendering', result: receivingState()},
-      {type: 'rendering', result: successfulState('c'), async: true},
-      {type: 'rendering', result: receivingState(), interim: true},
-      {type: 'rendering', result: receivingState()},
-      {type: 'rendering', result: receivingState(), interim: true},
-      {type: 'rendering', result: receivingState()},
-      {type: 'rendering', result: successfulState('e'), async: true},
+    expect(await subject.nextEventBatch).toEqual([
+      Host.createRenderingEvent(successfulReceiver('e')),
+      Host.createRenderingEvent(receivingReceiver()),
+      Host.createRenderingEvent(receivingReceiver()),
     ]);
   });
 
   test('failed receiving', async () => {
-    host.render(Promise.reject());
+    subject.host.render(Promise.reject());
 
-    await history.next;
+    expect(await subject.nextEventBatch).toEqual([
+      Host.createRenderingEvent(failedReceiver(undefined)),
+      Host.createRenderingEvent(receivingReceiver()),
+    ]);
 
-    host.render(Promise.reject(new Error('b')));
+    subject.host.render(Promise.reject(new Error('b')));
 
-    await history.next;
+    expect(await subject.nextEventBatch).toEqual([
+      Host.createRenderingEvent(failedReceiver(new Error('b'))),
+      Host.createRenderingEvent(receivingReceiver()),
+    ]);
 
-    const signalC = defer();
-    const signalD = defer();
+    subject.host.render(
+      Promise.resolve().then(() => {
+        throw new Error('c');
+      })
+    );
 
-    host.render(signalC.promise);
-    host.render(signalD.promise);
+    subject.host.render(Promise.reject(new Error('d')));
 
-    signalD.reject(new Error('d'));
-
-    await history.next;
-
-    signalC.reject(new Error('c'));
-
-    await Promise.resolve();
-
-    const defaultError = new Error('Failed to receive the signal.');
-
-    expect(history.events).toEqual([
-      {type: 'rendering', result: receivingState()},
-      {type: 'rendering', result: failedState(defaultError), async: true},
-      {type: 'rendering', result: receivingState(), interim: true},
-      {type: 'rendering', result: receivingState()},
-      {type: 'rendering', result: failedState(new Error('b')), async: true},
-      {type: 'rendering', result: receivingState(), interim: true},
-      {type: 'rendering', result: receivingState()},
-      {type: 'rendering', result: receivingState(), interim: true},
-      {type: 'rendering', result: receivingState()},
-      {type: 'rendering', result: failedState(new Error('d')), async: true},
+    expect(await subject.nextEventBatch).toEqual([
+      Host.createRenderingEvent(failedReceiver(new Error('d'))),
+      Host.createRenderingEvent(receivingReceiver()),
+      Host.createRenderingEvent(receivingReceiver()),
     ]);
   });
 });

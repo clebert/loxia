@@ -2,76 +2,71 @@ import type {Host} from 'batis';
 import {createBinderHook} from './create-binder-hook';
 import {createTransitionHook} from './create-transition-hook';
 
-export type UseSender = () => SenderState;
+export type UseSender = () => Sender;
+export type Sender = IdleSender | SendingSender | FailedSender;
 
-export type SenderState =
-  | IdleSenderState
-  | SendingSenderState
-  | FailedSenderState;
+export interface IdleSender {
+  readonly state: 'idle';
+  readonly reason?: undefined;
 
-export interface IdleSenderState {
-  readonly status: 'idle';
-  readonly error?: undefined;
-  readonly send: (signal: Promise<unknown>) => boolean;
+  send(signal: Promise<unknown>): boolean;
 }
 
-export interface SendingSenderState {
-  readonly status: 'sending';
-  readonly error?: undefined;
+export interface SendingSender {
+  readonly state: 'sending';
+  readonly reason?: undefined;
   readonly send?: undefined;
 }
 
-export interface FailedSenderState {
-  readonly status: 'failed';
-  readonly error: Error;
-  readonly send: (signal: Promise<unknown>) => boolean;
+export interface FailedSender {
+  readonly state: 'failed';
+  readonly reason: unknown;
+
+  send(signal: Promise<unknown>): boolean;
 }
 
 /**
  * A sender is a state machine which allows to send exactly one signal at a
  * time.
- *
- * Note: A sender automatically binds its asynchronous callback functions using
- * the `useBinder` Hook.
  */
 export function createSenderHook(
   hooks: Omit<typeof Host, 'prototype'>
 ): UseSender {
-  const {useMemo, useState} = hooks;
+  const {useCallback, useMemo, useState} = hooks;
   const useBinder = createBinderHook(hooks);
   const useTransition = createTransitionHook(hooks);
 
   return () => {
     const bind = useBinder();
 
-    const [state, setState] = useState<
-      | {readonly status: 'idle'}
-      | {readonly status: 'sending'}
-      | {readonly status: 'failed'; readonly error: Error}
-    >({status: 'idle'});
+    const [sender, setSender] = useState<
+      {state: 'idle'} | {state: 'sending'} | {state: 'failed'; reason: unknown}
+    >({state: 'idle'});
 
-    const send = useTransition(
+    const transition = useTransition(sender);
+
+    const send = useCallback(
       (signal: Promise<any>) => {
-        setState({status: 'sending'});
+        const status = transition(() => {
+          setSender({state: 'sending'});
 
-        signal.then(bind(() => setState({status: 'idle'}))).catch(
-          bind((error: unknown) =>
-            setState({
-              status: 'failed',
-              error:
-                error instanceof Error
-                  ? error
-                  : new Error('Failed to send the signal.'),
-            })
-          )
-        );
+          signal
+            .then(bind(() => setSender({state: 'idle'})))
+            .catch(bind((reason) => setSender({state: 'failed', reason})));
+        });
+
+        if (!status) {
+          signal.catch(() => undefined);
+        }
+
+        return status;
       },
-      [state]
+      [transition]
     );
 
     return useMemo(
-      () => (state.status === 'sending' ? state : {...state, send}),
-      [state]
+      () => (sender.state === 'sending' ? sender : {...sender, send}),
+      [transition]
     );
   };
 }
