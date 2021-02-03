@@ -32,7 +32,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "batis": "^9.0.0"
+    "batis": "^9.1.0"
   },
   "devDependencies": {
     "@babel/core": "^7.12.9",
