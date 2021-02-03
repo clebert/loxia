@@ -1,7 +1,7 @@
 import {Host, Subject} from 'batis';
 import {createTransitionHook} from './create-transition-hook';
 
-const useTransition = createTransitionHook(Host);
+const useTransition = createTransitionHook(Host.Hooks);
 
 describe('useTransition()', () => {
   test('a transition returns true only once', () => {

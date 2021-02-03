@@ -1,7 +1,7 @@
 import {Host, Subject} from 'batis';
 import {createBinderHook} from './create-binder-hook';
 
-const useBinder = createBinderHook(Host);
+const useBinder = createBinderHook(Host.Hooks);
 
 describe('useBinder()', () => {
   test('a binding is tied to the lifecycle of the Hook that surrounds it', async () => {

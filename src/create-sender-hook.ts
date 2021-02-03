@@ -1,4 +1,4 @@
-import type {Host} from 'batis';
+import type {BatisHooks} from 'batis';
 import {createBinderHook} from './create-binder-hook';
 import {createTransitionHook} from './create-transition-hook';
 
@@ -29,12 +29,7 @@ export interface FailedSender {
  * A sender is a state machine which allows to send exactly one signal at a
  * time.
  */
-export function createSenderHook(
-  hooks: Pick<
-    typeof Host,
-    'useCallback' | 'useEffect' | 'useMemo' | 'useRef' | 'useState'
-  >
-): UseSender {
+export function createSenderHook(hooks: BatisHooks): UseSender {
   const {useCallback, useMemo, useState} = hooks;
   const useBinder = createBinderHook(hooks);
   const useTransition = createTransitionHook(hooks);

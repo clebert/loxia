@@ -1,4 +1,4 @@
-import {Host} from 'batis';
+import type {BatisHooks} from 'batis';
 
 export type UseTransition = (
   ...dependencies: readonly [unknown, ...unknown[]]
@@ -13,9 +13,7 @@ export type Transition = (callback?: () => void) => boolean;
  * dependencies have not changed, so it should depend on the state of the
  * associated state machine.
  */
-export function createTransitionHook(
-  hooks: Pick<typeof Host, 'useCallback' | 'useMemo' | 'useRef'>
-): UseTransition {
+export function createTransitionHook(hooks: BatisHooks): UseTransition {
   const {useCallback, useMemo, useRef} = hooks;
 
   return (...dependencies) => {

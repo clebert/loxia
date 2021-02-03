@@ -1,4 +1,4 @@
-import type {Host} from 'batis';
+import type {BatisHooks} from 'batis';
 
 export type UseBinder = () => Bind;
 
@@ -17,9 +17,7 @@ export type Binding<TCallback extends (...args: any[]) => void> = (
  * therefore useful to bind the callback functions of `Promise.then`,
  * `Promise.catch`, and also `setTimeout`.
  */
-export function createBinderHook(
-  hooks: Pick<typeof Host, 'useCallback' | 'useEffect' | 'useRef'>
-): UseBinder {
+export function createBinderHook(hooks: BatisHooks): UseBinder {
   const {useCallback, useEffect, useRef} = hooks;
 
   return () => {

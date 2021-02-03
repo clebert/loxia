@@ -1,4 +1,4 @@
-import type {Host} from 'batis';
+import type {BatisHooks} from 'batis';
 import {createBinderHook} from './create-binder-hook';
 
 export type UseReceiver = <TValue>(signal: Promise<TValue>) => Receiver<TValue>;
@@ -39,9 +39,7 @@ export interface FailedReceiver {
  * operation overwrites the old one, the old one should no longer have any
  * effect.
  */
-export function createReceiverHook(
-  hooks: Pick<typeof Host, 'useCallback' | 'useEffect' | 'useRef' | 'useState'>
-): UseReceiver {
+export function createReceiverHook(hooks: BatisHooks): UseReceiver {
   const {useEffect, useRef, useState} = hooks;
   const useBinder = createBinderHook(hooks);
 

@@ -1,7 +1,7 @@
 import {Host, Subject} from 'batis';
 import {UseReceiver, createReceiverHook} from './create-receiver-hook';
 
-const useReceiver = createReceiverHook(Host);
+const useReceiver = createReceiverHook(Host.Hooks);
 const receivingReceiver = () => ({state: 'receiving'});
 const successfulReceiver = (value: string) => ({state: 'successful', value});
 const failedReceiver = (reason: unknown) => ({state: 'failed', reason});

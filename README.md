@@ -83,9 +83,7 @@ function useLock(): Lock {
   <summary>Type definitions</summary>
 
 ```ts
-function createTransitionHook(
-  hooks: Pick<typeof Host, 'useCallback' | 'useMemo' | 'useRef'>
-): UseTransition;
+function createTransitionHook(hooks: BatisHooks): UseTransition;
 ```
 
 ```ts
@@ -136,9 +134,7 @@ function useExample() {
   <summary>Type definitions</summary>
 
 ```ts
-function createBinderHook(
-  hooks: Pick<typeof Host, 'useCallback' | 'useEffect' | 'useRef'>
-): UseBinder;
+function createBinderHook(hooks: BatisHooks): UseBinder;
 ```
 
 ```ts
@@ -197,9 +193,7 @@ function useAsyncJsonData(url) {
   <summary>Type definitions</summary>
 
 ```ts
-function createReceiverHook(
-  hooks: Pick<typeof Host, 'useCallback' | 'useEffect' | 'useRef' | 'useState'>
-): UseReceiver;
+function createReceiverHook(hooks: BatisHooks): UseReceiver;
 ```
 
 ```ts
@@ -241,12 +235,7 @@ A sender is a state machine which allows to send exactly one signal at a time.
   <summary>Type definitions</summary>
 
 ```ts
-function createSenderHook(
-  hooks: Pick<
-    typeof Host,
-    'useCallback' | 'useEffect' | 'useMemo' | 'useRef' | 'useState'
-  >
-): UseSender;
+function createSenderHook(hooks: BatisHooks): UseSender;
 ```
 
 ```ts

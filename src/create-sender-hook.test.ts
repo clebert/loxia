@@ -1,7 +1,7 @@
 import {Host, Subject} from 'batis';
 import {createSenderHook} from './create-sender-hook';
 
-const useSender = createSenderHook(Host);
+const useSender = createSenderHook(Host.Hooks);
 const idleSender = () => ({state: 'idle', send: expect.any(Function)});
 const sendingSender = () => ({state: 'sending'});
 
