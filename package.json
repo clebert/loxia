@@ -1,6 +1,6 @@
 {
   "name": "loxia",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Implementing JavaScript state machines using React Hooks.",
   "bugs": {
     "url": "https://github.com/clebert/loxia/issues"
