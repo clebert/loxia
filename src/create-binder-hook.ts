@@ -18,7 +18,7 @@ export type Binding<TCallback extends (...args: any[]) => void> = (
  * `Promise.catch`, and also `setTimeout`.
  */
 export function createBinderHook(
-  hooks: Omit<typeof Host, 'prototype'>
+  hooks: Pick<typeof Host, 'useCallback' | 'useEffect' | 'useRef'>
 ): UseBinder {
   const {useCallback, useEffect, useRef} = hooks;
 

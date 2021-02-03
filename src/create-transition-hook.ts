@@ -14,7 +14,7 @@ export type Transition = (callback?: () => void) => boolean;
  * associated state machine.
  */
 export function createTransitionHook(
-  hooks: Omit<typeof Host, 'prototype'>
+  hooks: Pick<typeof Host, 'useCallback' | 'useMemo' | 'useRef'>
 ): UseTransition {
   const {useCallback, useMemo, useRef} = hooks;
 

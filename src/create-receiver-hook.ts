@@ -40,7 +40,7 @@ export interface FailedReceiver {
  * effect.
  */
 export function createReceiverHook(
-  hooks: Omit<typeof Host, 'prototype'>
+  hooks: Pick<typeof Host, 'useCallback' | 'useEffect' | 'useRef' | 'useState'>
 ): UseReceiver {
   const {useEffect, useRef, useState} = hooks;
   const useBinder = createBinderHook(hooks);

@@ -30,7 +30,10 @@ export interface FailedSender {
  * time.
  */
 export function createSenderHook(
-  hooks: Omit<typeof Host, 'prototype'>
+  hooks: Pick<
+    typeof Host,
+    'useCallback' | 'useEffect' | 'useMemo' | 'useRef' | 'useState'
+  >
 ): UseSender {
   const {useCallback, useMemo, useState} = hooks;
   const useBinder = createBinderHook(hooks);
