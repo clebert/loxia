@@ -1,72 +1,62 @@
-import {Host, Subject} from 'batis';
+import {Host} from 'batis';
 import {UseReceiver, createReceiverHook} from './create-receiver-hook';
 
 const useReceiver = createReceiverHook(Host.Hooks);
 const receivingReceiver = () => ({state: 'receiving'});
 const successfulReceiver = (value: string) => ({state: 'successful', value});
-const failedReceiver = (reason: unknown) => ({state: 'failed', reason});
+const failedReceiver = (error: unknown) => ({state: 'failed', error});
 
 describe('useReceiver()', () => {
-  let subject: Subject<UseReceiver>;
+  let host: Host<UseReceiver>;
 
   beforeEach(() => {
-    subject = new Subject(useReceiver);
+    host = new Host(useReceiver);
   });
 
   test('successful receiving', async () => {
-    subject.host.render(Promise.resolve('a'));
+    const promiseA = Promise.resolve('a');
 
-    expect(await subject.nextEventBatch).toEqual([
-      Host.createRenderingEvent(successfulReceiver('a')),
-      Host.createRenderingEvent(receivingReceiver()),
-    ]);
+    expect(host.render(promiseA)).toEqual([receivingReceiver()]);
 
-    subject.host.render(Promise.resolve('b'));
-    subject.host.render(Promise.resolve('c'));
+    await host.nextAsyncStateChange;
 
-    expect(await subject.nextEventBatch).toEqual([
-      Host.createRenderingEvent(successfulReceiver('c')),
-      Host.createRenderingEvent(receivingReceiver()),
-      Host.createRenderingEvent(receivingReceiver()),
-    ]);
+    expect(host.render(promiseA)).toEqual([successfulReceiver('a')]);
 
-    subject.host.render(Promise.resolve().then(() => 'd'));
-    subject.host.render(Promise.resolve('e'));
+    const promiseB = Promise.resolve('b');
+    const promiseC = Promise.resolve('c');
 
-    expect(await subject.nextEventBatch).toEqual([
-      Host.createRenderingEvent(successfulReceiver('e')),
-      Host.createRenderingEvent(receivingReceiver()),
-      Host.createRenderingEvent(receivingReceiver()),
-    ]);
+    expect(host.render(promiseB)).toEqual([receivingReceiver()]);
+    expect(host.render(promiseC)).toEqual([receivingReceiver()]);
+
+    await host.nextAsyncStateChange;
+
+    expect(host.render(promiseC)).toEqual([successfulReceiver('c')]);
   });
 
   test('failed receiving', async () => {
-    subject.host.render(Promise.reject());
+    const promiseA = Promise.resolve().then(() => {
+      throw new Error('a');
+    });
 
-    expect(await subject.nextEventBatch).toEqual([
-      Host.createRenderingEvent(failedReceiver(undefined)),
-      Host.createRenderingEvent(receivingReceiver()),
-    ]);
+    expect(host.render(promiseA)).toEqual([receivingReceiver()]);
 
-    subject.host.render(Promise.reject(new Error('b')));
+    await host.nextAsyncStateChange;
 
-    expect(await subject.nextEventBatch).toEqual([
-      Host.createRenderingEvent(failedReceiver(new Error('b'))),
-      Host.createRenderingEvent(receivingReceiver()),
-    ]);
+    expect(host.render(promiseA)).toEqual([failedReceiver(new Error('a'))]);
 
-    subject.host.render(
-      Promise.resolve().then(() => {
-        throw new Error('c');
-      })
-    );
+    const promiseB = Promise.resolve().then(() => {
+      throw new Error('b');
+    });
 
-    subject.host.render(Promise.reject(new Error('d')));
+    const promiseC = Promise.resolve().then(() => {
+      throw new Error('c');
+    });
 
-    expect(await subject.nextEventBatch).toEqual([
-      Host.createRenderingEvent(failedReceiver(new Error('d'))),
-      Host.createRenderingEvent(receivingReceiver()),
-      Host.createRenderingEvent(receivingReceiver()),
-    ]);
+    expect(host.render(promiseB)).toEqual([receivingReceiver()]);
+    expect(host.render(promiseC)).toEqual([receivingReceiver()]);
+
+    await host.nextAsyncStateChange;
+
+    expect(host.render(promiseC)).toEqual([failedReceiver(new Error('c'))]);
   });
 });

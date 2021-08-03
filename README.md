@@ -208,20 +208,16 @@ type Receiver<TValue> =
 
 interface ReceivingReceiver {
   readonly state: 'receiving';
-  readonly value?: undefined;
-  readonly reason?: undefined;
 }
 
 interface SuccessfulReceiver<TValue> {
   readonly state: 'successful';
   readonly value: TValue;
-  readonly reason?: undefined;
 }
 
 interface FailedReceiver {
   readonly state: 'failed';
-  readonly value?: undefined;
-  readonly reason: unknown;
+  readonly error: unknown;
 }
 ```
 
@@ -247,20 +243,17 @@ type Sender = IdleSender | SendingSender | FailedSender;
 
 interface IdleSender {
   readonly state: 'idle';
-  readonly reason?: undefined;
 
   send(signal: Promise<unknown>): boolean;
 }
 
 interface SendingSender {
   readonly state: 'sending';
-  readonly reason?: undefined;
-  readonly send?: undefined;
 }
 
 interface FailedSender {
   readonly state: 'failed';
-  readonly reason: unknown;
+  readonly error: unknown;
 
   send(signal: Promise<unknown>): boolean;
 }

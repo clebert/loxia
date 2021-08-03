@@ -26,15 +26,16 @@ export function createBinderHook(hooks: BatisHooks): UseBinder {
     useEffect(() => () => void (aliveRef.current = false), []);
 
     return useCallback(
-      (callback) => (...args) => {
-        if (!aliveRef.current) {
-          return false;
-        }
+      (callback) =>
+        (...args) => {
+          if (!aliveRef.current) {
+            return false;
+          }
 
-        callback(...args);
+          callback(...args);
 
-        return true;
-      },
+          return true;
+        },
       []
     );
   };

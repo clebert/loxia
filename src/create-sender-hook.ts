@@ -7,20 +7,17 @@ export type Sender = IdleSender | SendingSender | FailedSender;
 
 export interface IdleSender {
   readonly state: 'idle';
-  readonly reason?: undefined;
 
   send(signal: Promise<unknown>): boolean;
 }
 
 export interface SendingSender {
   readonly state: 'sending';
-  readonly reason?: undefined;
-  readonly send?: undefined;
 }
 
 export interface FailedSender {
   readonly state: 'failed';
-  readonly reason: unknown;
+  readonly error: unknown;
 
   send(signal: Promise<unknown>): boolean;
 }
@@ -38,7 +35,7 @@ export function createSenderHook(hooks: BatisHooks): UseSender {
     const bind = useBinder();
 
     const [sender, setSender] = useState<
-      {state: 'idle'} | {state: 'sending'} | {state: 'failed'; reason: unknown}
+      {state: 'idle'} | {state: 'sending'} | {state: 'failed'; error: unknown}
     >({state: 'idle'});
 
     const transition = useTransition(sender);
@@ -50,7 +47,7 @@ export function createSenderHook(hooks: BatisHooks): UseSender {
 
           signal
             .then(bind(() => setSender({state: 'idle'})))
-            .catch(bind((reason) => setSender({state: 'failed', reason})));
+            .catch(bind((error) => setSender({state: 'failed', error})));
         });
 
         if (!status) {

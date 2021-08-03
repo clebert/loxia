@@ -10,20 +10,16 @@ export type Receiver<TValue> =
 
 export interface ReceivingReceiver {
   readonly state: 'receiving';
-  readonly value?: undefined;
-  readonly reason?: undefined;
 }
 
 export interface SuccessfulReceiver<TValue> {
   readonly state: 'successful';
   readonly value: TValue;
-  readonly reason?: undefined;
 }
 
 export interface FailedReceiver {
   readonly state: 'failed';
-  readonly value?: undefined;
-  readonly reason: unknown;
+  readonly error: unknown;
 }
 
 /**
@@ -74,12 +70,12 @@ export function createReceiverHook(hooks: BatisHooks): UseReceiver {
           })
         )
         .catch(
-          bind((reason: unknown) => {
+          bind((error: unknown) => {
             if (
               signalRef.current === signal &&
               receiverRef.current.state === 'receiving'
             ) {
-              receiverRef.current = {state: 'failed', reason};
+              receiverRef.current = {state: 'failed', error};
 
               rerender({});
             }

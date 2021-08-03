@@ -1,74 +1,93 @@
-import {Host, Subject} from 'batis';
-import {createSenderHook} from './create-sender-hook';
+import {Host} from 'batis';
+import {FailedSender, IdleSender, createSenderHook} from './create-sender-hook';
 
 const useSender = createSenderHook(Host.Hooks);
 const idleSender = () => ({state: 'idle', send: expect.any(Function)});
 const sendingSender = () => ({state: 'sending'});
 
-const failedSender = (reason: unknown) => ({
+const failedSender = (error: unknown) => ({
   state: 'failed',
-  reason,
+  error,
   send: expect.any(Function),
 });
 
 describe('useSender()', () => {
   test('successful sending', async () => {
-    const subject = new Subject(useSender);
+    const host = new Host(useSender);
+    const result1 = host.render();
 
-    subject.host.render();
+    expect(result1).toEqual([idleSender()]);
 
-    subject.latestEvent?.result!.send?.(Promise.resolve());
+    (result1[0] as IdleSender).send(Promise.resolve());
 
-    expect(await subject.nextEventBatch).toEqual([
-      Host.createRenderingEvent(idleSender()),
-      Host.createRenderingEvent(sendingSender()),
-      Host.createRenderingEvent(idleSender()),
-    ]);
+    expect(host.render()).toEqual([sendingSender()]);
 
-    subject.latestEvent?.result!.send?.(Promise.resolve());
+    await host.nextAsyncStateChange;
 
-    expect(await subject.nextEventBatch).toEqual([
-      Host.createRenderingEvent(idleSender()),
-      Host.createRenderingEvent(sendingSender()),
-    ]);
+    const result2 = host.render();
+
+    expect(result2).toEqual([idleSender()]);
+
+    (result2[0] as IdleSender).send(Promise.resolve());
+
+    expect(host.render()).toEqual([sendingSender()]);
+
+    await host.nextAsyncStateChange;
+
+    expect(host.render()).toEqual([idleSender()]);
   });
 
   test('failed sending', async () => {
-    const subject = new Subject(useSender);
+    const host = new Host(useSender);
+    const result1 = host.render();
 
-    subject.host.render();
+    expect(result1).toEqual([idleSender()]);
 
-    subject.latestEvent?.result!.send?.(Promise.reject(new Error('1')));
+    (result1[0] as FailedSender).send(
+      Promise.resolve().then(() => {
+        throw new Error('a');
+      })
+    );
 
-    expect(await subject.nextEventBatch).toEqual([
-      Host.createRenderingEvent(failedSender(new Error('1'))),
-      Host.createRenderingEvent(sendingSender()),
-      Host.createRenderingEvent(idleSender()),
-    ]);
+    expect(host.render()).toEqual([sendingSender()]);
 
-    subject.latestEvent?.result!.send?.(Promise.reject(new Error('2')));
+    await host.nextAsyncStateChange;
 
-    expect(await subject.nextEventBatch).toEqual([
-      Host.createRenderingEvent(failedSender(new Error('2'))),
-      Host.createRenderingEvent(sendingSender()),
-    ]);
+    const result2 = host.render();
+
+    expect(result2).toEqual([failedSender(new Error('a'))]);
+
+    (result2[0] as FailedSender).send(
+      Promise.resolve().then(() => {
+        throw new Error('b');
+      })
+    );
+
+    expect(host.render()).toEqual([sendingSender()]);
+
+    await host.nextAsyncStateChange;
+
+    expect(host.render()).toEqual([failedSender(new Error('b'))]);
   });
 
   test('send transition', async () => {
-    const subject = new Subject(useSender);
+    const host = new Host(useSender);
+    const [sender] = host.render();
 
-    subject.host.render();
-
-    expect(subject.latestEvent?.result!.send?.(Promise.resolve())).toBe(true);
+    expect((sender as IdleSender).send(Promise.resolve('a'))).toBe(true);
 
     expect(
-      subject.latestEvent?.result!.send?.(Promise.reject(new Error()))
+      (sender as IdleSender).send(
+        Promise.resolve().then(() => {
+          throw new Error('b');
+        })
+      )
     ).toBe(false);
 
-    expect(await subject.nextEventBatch).toEqual([
-      Host.createRenderingEvent(idleSender()),
-      Host.createRenderingEvent(sendingSender()),
-      Host.createRenderingEvent(idleSender()),
-    ]);
+    expect(host.render()).toEqual([sendingSender()]);
+
+    await host.nextAsyncStateChange;
+
+    expect(host.render()).toEqual([idleSender()]);
   });
 });
