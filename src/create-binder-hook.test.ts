@@ -4,7 +4,7 @@ import {createBinderHook} from './create-binder-hook';
 const useBinder = createBinderHook(Host.Hooks);
 
 describe('useBinder()', () => {
-  test('a binding is tied to the lifecycle of the Hook that surrounds it', async () => {
+  test('a binding is tied to the lifecycle of the Hook that surrounds it', () => {
     const host = new Host(useBinder);
     const bind = host.render()[0];
     const callback1 = jest.fn();
