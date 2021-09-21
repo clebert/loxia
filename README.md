@@ -1,4 +1,4 @@
-# Loxia
+# loxia
 
 [![][ci-badge]][ci-link] [![][version-badge]][version-link]
 [![][license-badge]][license-link] [![][types-badge]][types-link]
@@ -9,7 +9,7 @@
 [version-badge]: https://badgen.net/npm/v/loxia
 [version-link]: https://www.npmjs.com/package/loxia
 [license-badge]: https://badgen.net/npm/license/loxia
-[license-link]: https://github.com/clebert/loxia/blob/master/LICENSE
+[license-link]: https://github.com/clebert/loxia/blob/master/LICENSE.md
 [types-badge]: https://badgen.net/npm/types/loxia
 [types-link]: https://github.com/clebert/loxia
 [size-badge]: https://badgen.net/bundlephobia/minzip/loxia
