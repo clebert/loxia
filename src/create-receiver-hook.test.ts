@@ -9,7 +9,8 @@ import {
   useRef,
   useState,
 } from 'batis';
-import {type UseReceiver, createReceiverHook} from './create-receiver-hook.js';
+import {createReceiverHook} from './create-receiver-hook.js';
+import type {UseReceiver} from './create-receiver-hook.js';
 
 const useReceiver = createReceiverHook({
   useCallback,

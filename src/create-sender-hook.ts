@@ -1,6 +1,6 @@
 import {createBinderHook} from './create-binder-hook.js';
 import {createTransitionHook} from './create-transition-hook.js';
-import {type Hooks} from './hooks.js';
+import type {Hooks} from './hooks.js';
 
 export type UseSender = () => Sender;
 export type Sender = IdleSender | SendingSender | FailedSender;

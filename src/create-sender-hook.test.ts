@@ -9,11 +9,8 @@ import {
   useRef,
   useState,
 } from 'batis';
-import {
-  type FailedSender,
-  type IdleSender,
-  createSenderHook,
-} from './create-sender-hook.js';
+import {createSenderHook} from './create-sender-hook.js';
+import type {FailedSender, IdleSender} from './create-sender-hook.js';
 
 const useSender = createSenderHook({
   useCallback,

@@ -1,4 +1,4 @@
-import {type Hooks} from './hooks.js';
+import type {Hooks} from './hooks.js';
 
 export type UseBinder = () => Bind;
 
