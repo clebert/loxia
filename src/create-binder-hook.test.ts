@@ -1,3 +1,4 @@
+import {createBinderHook} from './create-binder-hook.js';
 import {describe, expect, jest, test} from '@jest/globals';
 import {
   Host,
@@ -9,7 +10,6 @@ import {
   useRef,
   useState,
 } from 'batis';
-import {createBinderHook} from './create-binder-hook.js';
 
 const useBinder = createBinderHook({
   useCallback,

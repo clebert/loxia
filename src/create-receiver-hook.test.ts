@@ -1,3 +1,6 @@
+import type {UseReceiver} from './create-receiver-hook.js';
+
+import {createReceiverHook} from './create-receiver-hook.js';
 import {beforeEach, describe, expect, test} from '@jest/globals';
 import {
   Host,
@@ -9,8 +12,6 @@ import {
   useRef,
   useState,
 } from 'batis';
-import {createReceiverHook} from './create-receiver-hook.js';
-import type {UseReceiver} from './create-receiver-hook.js';
 
 const useReceiver = createReceiverHook({
   useCallback,

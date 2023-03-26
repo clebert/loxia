@@ -1,3 +1,6 @@
+import type {FailedSender, IdleSender} from './create-sender-hook.js';
+
+import {createSenderHook} from './create-sender-hook.js';
 import {describe, expect, test} from '@jest/globals';
 import {
   Host,
@@ -9,8 +12,6 @@ import {
   useRef,
   useState,
 } from 'batis';
-import {createSenderHook} from './create-sender-hook.js';
-import type {FailedSender, IdleSender} from './create-sender-hook.js';
 
 const useSender = createSenderHook({
   useCallback,

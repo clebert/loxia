@@ -1,5 +1,6 @@
-import {createBinderHook} from './create-binder-hook.js';
 import type {Hooks} from './hooks.js';
+
+import {createBinderHook} from './create-binder-hook.js';
 
 export type UseReceiver = <TValue>(signal: Promise<TValue>) => Receiver<TValue>;
 

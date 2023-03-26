@@ -1,3 +1,4 @@
+import {createTransitionHook} from './create-transition-hook.js';
 import {describe, expect, jest, test} from '@jest/globals';
 import {
   Host,
@@ -9,7 +10,6 @@ import {
   useRef,
   useState,
 } from 'batis';
-import {createTransitionHook} from './create-transition-hook.js';
 
 const useTransition = createTransitionHook({
   useCallback,
