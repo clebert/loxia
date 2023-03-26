@@ -1,4 +1,4 @@
-import type {BatisHooks} from 'batis';
+import {type Hooks} from './hooks.js';
 
 export type UseBinder = () => Bind;
 
@@ -17,7 +17,7 @@ export type Binding<TCallback extends (...args: any[]) => void> = (
  * therefore useful to bind the callback functions of `Promise.then`,
  * `Promise.catch`, and also `setTimeout`.
  */
-export function createBinderHook(hooks: BatisHooks): UseBinder {
+export function createBinderHook(hooks: Hooks): UseBinder {
   const {useCallback, useEffect, useRef} = hooks;
 
   return () => {

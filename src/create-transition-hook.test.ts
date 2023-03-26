@@ -1,25 +1,42 @@
 import {describe, expect, jest, test} from '@jest/globals';
-import {Host} from 'batis';
+import {
+  Host,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from 'batis';
 import {createTransitionHook} from './create-transition-hook.js';
 
-const useTransition = createTransitionHook(Host.Hooks);
+const useTransition = createTransitionHook({
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+});
 
 describe(`useTransition()`, () => {
   test(`a transition returns true only once`, () => {
     const host = new Host(useTransition);
-    const [transition1] = host.render(0);
+    const [transition1] = host.run(0);
     const callback = jest.fn();
 
     expect(transition1(callback)).toBe(true);
     expect(transition1(callback)).toBe(false);
 
-    host.render(0);
+    host.run(0);
 
     expect(transition1(callback)).toBe(false);
 
-    const [transition2] = host.render(1);
+    const [transition2] = host.run(1);
 
-    host.render(1);
+    host.run(1);
 
     expect(transition2(callback)).toBe(true);
     expect(transition2(callback)).toBe(false);
@@ -28,9 +45,9 @@ describe(`useTransition()`, () => {
 
   test(`a transition returns false if its dependencies have changed`, () => {
     const host = new Host(useTransition);
-    const [transition] = host.render(0);
+    const [transition] = host.run(0);
 
-    host.render(1);
+    host.run(1);
 
     const callback = jest.fn();
 
@@ -41,9 +58,9 @@ describe(`useTransition()`, () => {
 
   test(`a transition is stable as long as its dependencies have not changed`, () => {
     const host = new Host(useTransition);
-    const [transition] = host.render(0);
+    const [transition] = host.run(0);
 
-    expect(host.render(0)).toEqual([transition]);
-    expect(host.render(1)).not.toEqual([transition]);
+    expect(host.run(0)).toEqual([transition]);
+    expect(host.run(1)).not.toEqual([transition]);
   });
 });

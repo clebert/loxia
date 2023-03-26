@@ -1,5 +1,5 @@
-import type {BatisHooks} from 'batis';
 import {createBinderHook} from './create-binder-hook.js';
+import {type Hooks} from './hooks.js';
 
 export type UseReceiver = <TValue>(signal: Promise<TValue>) => Receiver<TValue>;
 
@@ -35,7 +35,7 @@ export interface FailedReceiver {
  * operation overwrites the old one, the old one should no longer have any
  * effect.
  */
-export function createReceiverHook(hooks: BatisHooks): UseReceiver {
+export function createReceiverHook(hooks: Hooks): UseReceiver {
   const {useEffect, useRef, useState} = hooks;
   const useBinder = createBinderHook(hooks);
 

@@ -1,9 +1,30 @@
 import {describe, expect, test} from '@jest/globals';
-import {Host} from 'batis';
-import type {FailedSender, IdleSender} from './create-sender-hook.js';
-import {createSenderHook} from './create-sender-hook.js';
+import {
+  Host,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from 'batis';
+import {
+  type FailedSender,
+  type IdleSender,
+  createSenderHook,
+} from './create-sender-hook.js';
 
-const useSender = createSenderHook(Host.Hooks);
+const useSender = createSenderHook({
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+});
+
 const idleSender = () => ({state: `idle`, send: expect.any(Function)});
 const sendingSender = () => ({state: `sending`});
 
@@ -16,32 +37,32 @@ const failedSender = (error: unknown) => ({
 describe(`useSender()`, () => {
   test(`successful sending`, async () => {
     const host = new Host(useSender);
-    const result1 = host.render();
+    const result1 = host.run();
 
     expect(result1).toEqual([idleSender()]);
 
     (result1[0] as IdleSender).send(Promise.resolve());
 
-    expect(host.render()).toEqual([sendingSender()]);
+    expect(host.run()).toEqual([sendingSender()]);
 
     await host.nextAsyncStateChange;
 
-    const result2 = host.render();
+    const result2 = host.run();
 
     expect(result2).toEqual([idleSender()]);
 
     (result2[0] as IdleSender).send(Promise.resolve());
 
-    expect(host.render()).toEqual([sendingSender()]);
+    expect(host.run()).toEqual([sendingSender()]);
 
     await host.nextAsyncStateChange;
 
-    expect(host.render()).toEqual([idleSender()]);
+    expect(host.run()).toEqual([idleSender()]);
   });
 
   test(`failed sending`, async () => {
     const host = new Host(useSender);
-    const result1 = host.render();
+    const result1 = host.run();
 
     expect(result1).toEqual([idleSender()]);
 
@@ -51,11 +72,11 @@ describe(`useSender()`, () => {
       }),
     );
 
-    expect(host.render()).toEqual([sendingSender()]);
+    expect(host.run()).toEqual([sendingSender()]);
 
     await host.nextAsyncStateChange;
 
-    const result2 = host.render();
+    const result2 = host.run();
 
     expect(result2).toEqual([failedSender(new Error(`a`))]);
 
@@ -65,16 +86,16 @@ describe(`useSender()`, () => {
       }),
     );
 
-    expect(host.render()).toEqual([sendingSender()]);
+    expect(host.run()).toEqual([sendingSender()]);
 
     await host.nextAsyncStateChange;
 
-    expect(host.render()).toEqual([failedSender(new Error(`b`))]);
+    expect(host.run()).toEqual([failedSender(new Error(`b`))]);
   });
 
   test(`send transition`, async () => {
     const host = new Host(useSender);
-    const [sender] = host.render();
+    const [sender] = host.run();
 
     expect((sender as IdleSender).send(Promise.resolve(`a`))).toBe(true);
 
@@ -86,10 +107,10 @@ describe(`useSender()`, () => {
       ),
     ).toBe(false);
 
-    expect(host.render()).toEqual([sendingSender()]);
+    expect(host.run()).toEqual([sendingSender()]);
 
     await host.nextAsyncStateChange;
 
-    expect(host.render()).toEqual([idleSender()]);
+    expect(host.run()).toEqual([idleSender()]);
   });
 });
