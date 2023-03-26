@@ -1,6 +1,6 @@
 import type {BatisHooks} from 'batis';
-import {createBinderHook} from './create-binder-hook';
-import {createTransitionHook} from './create-transition-hook';
+import {createBinderHook} from './create-binder-hook.js';
+import {createTransitionHook} from './create-transition-hook.js';
 
 export type UseSender = () => Sender;
 export type Sender = IdleSender | SendingSender | FailedSender;
@@ -36,18 +36,18 @@ export function createSenderHook(hooks: BatisHooks): UseSender {
 
     const [sender, setSender] = useState<
       {state: 'idle'} | {state: 'sending'} | {state: 'failed'; error: unknown}
-    >({state: 'idle'});
+    >({state: `idle`});
 
     const transition = useTransition(sender);
 
     const send = useCallback(
       (signal: Promise<any>) => {
         const status = transition(() => {
-          setSender({state: 'sending'});
+          setSender({state: `sending`});
 
           signal
-            .then(bind(() => setSender({state: 'idle'})))
-            .catch(bind((error) => setSender({state: 'failed', error})));
+            .then(bind(() => setSender({state: `idle`})))
+            .catch(bind((error) => setSender({state: `failed`, error})));
         });
 
         if (!status) {
@@ -56,12 +56,12 @@ export function createSenderHook(hooks: BatisHooks): UseSender {
 
         return status;
       },
-      [transition]
+      [transition],
     );
 
     return useMemo(
-      () => (sender.state === 'sending' ? sender : {...sender, send}),
-      [transition]
+      () => (sender.state === `sending` ? sender : {...sender, send}),
+      [transition],
     );
   };
 }

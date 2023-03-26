@@ -1,5 +1,5 @@
 import type {BatisHooks} from 'batis';
-import {createBinderHook} from './create-binder-hook';
+import {createBinderHook} from './create-binder-hook.js';
 
 export type UseReceiver = <TValue>(signal: Promise<TValue>) => Receiver<TValue>;
 
@@ -41,14 +41,14 @@ export function createReceiverHook(hooks: BatisHooks): UseReceiver {
 
   return <TValue>(signal: Promise<TValue>) => {
     const bind = useBinder();
-    const receiverRef = useRef<Receiver<TValue>>({state: 'receiving'});
+    const receiverRef = useRef<Receiver<TValue>>({state: `receiving`});
     const signalRef = useRef(signal);
 
     if (
       signalRef.current !== signal &&
-      receiverRef.current.state !== 'receiving'
+      receiverRef.current.state !== `receiving`
     ) {
-      receiverRef.current = {state: 'receiving'};
+      receiverRef.current = {state: `receiving`};
     }
 
     signalRef.current = signal;
@@ -61,25 +61,25 @@ export function createReceiverHook(hooks: BatisHooks): UseReceiver {
           bind((value) => {
             if (
               signalRef.current === signal &&
-              receiverRef.current.state === 'receiving'
+              receiverRef.current.state === `receiving`
             ) {
-              receiverRef.current = {state: 'successful', value};
+              receiverRef.current = {state: `successful`, value};
 
               rerender({});
             }
-          })
+          }),
         )
         .catch(
           bind((error: unknown) => {
             if (
               signalRef.current === signal &&
-              receiverRef.current.state === 'receiving'
+              receiverRef.current.state === `receiving`
             ) {
-              receiverRef.current = {state: 'failed', error};
+              receiverRef.current = {state: `failed`, error};
 
               rerender({});
             }
-          })
+          }),
         );
     }, [signal]);
 

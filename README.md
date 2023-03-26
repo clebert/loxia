@@ -1,26 +1,11 @@
 # loxia
 
-[![][ci-badge]][ci-link] [![][version-badge]][version-link]
-[![][license-badge]][license-link] [![][types-badge]][types-link]
-[![][size-badge]][size-link]
-
-[ci-badge]: https://github.com/clebert/loxia/workflows/CI/badge.svg
-[ci-link]: https://github.com/clebert/loxia
-[version-badge]: https://badgen.net/npm/v/loxia
-[version-link]: https://www.npmjs.com/package/loxia
-[license-badge]: https://badgen.net/npm/license/loxia
-[license-link]: https://github.com/clebert/loxia/blob/master/LICENSE.md
-[types-badge]: https://badgen.net/npm/types/loxia
-[types-link]: https://github.com/clebert/loxia
-[size-badge]: https://badgen.net/bundlephobia/minzip/loxia
-[size-link]: https://bundlephobia.com/result?p=loxia
-
-Implementing JavaScript state machines using React Hooks.
+> Implementing JavaScript state machines using React Hooks.
 
 ## Installation
 
 ```
-npm install loxia --save
+npm install loxia
 ```
 
 ## Motivation
@@ -50,9 +35,9 @@ associated state machine.
 <details>
   <summary>Usage example</summary>
 
-```js
-import {createTransitionHook} from 'loxia';
+```ts
 import {Host} from 'batis'; // import * as React from 'react';
+import {createTransitionHook} from 'loxia';
 
 const useTransition = createTransitionHook(Host /* React */);
 
@@ -62,17 +47,17 @@ function useLock(): Lock {
 
   const lock = Host /* React */.useCallback(
     () => transition(() => setLocked(true)),
-    [transition]
+    [transition],
   );
 
   const unlock = Host /* React */.useCallback(
     () => transition(() => setLocked(false)),
-    [transition]
+    [transition],
   );
 
   return Host /* React */.useMemo(
     () => (locked ? {locked, unlock} : {locked, lock}),
-    [locked]
+    [locked],
   );
 }
 ```
@@ -109,9 +94,9 @@ to bind the callback functions of `Promise.then`, `Promise.catch`, and also
 <details>
   <summary>Usage example</summary>
 
-```js
-import {createBinderHook} from 'loxia';
+```ts
 import {Host} from 'batis'; // import * as React from 'react';
+import {createBinderHook} from 'loxia';
 
 const useBinder = createBinderHook(Host /* React */);
 
@@ -122,7 +107,7 @@ function useExample() {
     setTimeout(
       bind(() => {
         // ...
-      })
+      }),
     );
   });
 }
@@ -143,7 +128,7 @@ type UseBinder = () => Bind;
 
 ```ts
 type Bind = <TCallback extends (...args: any[]) => void>(
-  callback: TCallback
+  callback: TCallback,
 ) => Binding<TCallback>;
 ```
 
@@ -171,16 +156,16 @@ operation overwrites the old one, the old one should no longer have any effect.
 <details>
   <summary>Usage example</summary>
 
-```js
-import {createReceiverHook} from 'loxia';
+```ts
 import {Host} from 'batis'; // import * as React from 'react';
+import {createReceiverHook} from 'loxia';
 
 const useReceiver = createReceiverHook(Host /* React */);
 
 function useAsyncJsonData(url) {
   const signal = Host /* React */.useMemo(
     () => fetch(url).then((response) => response.json()),
-    [url]
+    [url],
   );
 
   return useReceiver(signal);
@@ -260,8 +245,3 @@ interface FailedSender {
 ```
 
 </details>
-
----
-
-Copyright 2020-2021 Clemens Akens. All rights reserved.
-[MIT license](https://github.com/clebert/loxia/blob/master/LICENSE.md).

@@ -1,10 +1,11 @@
+import {describe, expect, jest, test} from '@jest/globals';
 import {Host} from 'batis';
-import {createTransitionHook} from './create-transition-hook';
+import {createTransitionHook} from './create-transition-hook.js';
 
 const useTransition = createTransitionHook(Host.Hooks);
 
-describe('useTransition()', () => {
-  test('a transition returns true only once', () => {
+describe(`useTransition()`, () => {
+  test(`a transition returns true only once`, () => {
     const host = new Host(useTransition);
     const [transition1] = host.render(0);
     const callback = jest.fn();
@@ -25,7 +26,7 @@ describe('useTransition()', () => {
     expect(callback).toHaveBeenCalledTimes(2);
   });
 
-  test('a transition returns false if its dependencies have changed', () => {
+  test(`a transition returns false if its dependencies have changed`, () => {
     const host = new Host(useTransition);
     const [transition] = host.render(0);
 
@@ -38,7 +39,7 @@ describe('useTransition()', () => {
     expect(callback).toHaveBeenCalledTimes(0);
   });
 
-  test('a transition is stable as long as its dependencies have not changed', () => {
+  test(`a transition is stable as long as its dependencies have not changed`, () => {
     const host = new Host(useTransition);
     const [transition] = host.render(0);
 

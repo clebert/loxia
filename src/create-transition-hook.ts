@@ -36,7 +36,7 @@ export function createTransitionHook(hooks: BatisHooks): UseTransition {
 
         return false;
       },
-      [token]
+      [token],
     );
   };
 }

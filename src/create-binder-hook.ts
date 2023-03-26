@@ -3,7 +3,7 @@ import type {BatisHooks} from 'batis';
 export type UseBinder = () => Bind;
 
 export type Bind = <TCallback extends (...args: any[]) => void>(
-  callback: TCallback
+  callback: TCallback,
 ) => Binding<TCallback>;
 
 export type Binding<TCallback extends (...args: any[]) => void> = (
@@ -36,7 +36,7 @@ export function createBinderHook(hooks: BatisHooks): UseBinder {
 
           return true;
         },
-      []
+      [],
     );
   };
 }
