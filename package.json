@@ -1,6 +1,6 @@
 {
   "name": "loxia",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Implementing JavaScript state machines using React Hooks.",
   "repository": {
     "type": "git",
